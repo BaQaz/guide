@@ -276,6 +276,10 @@ CARDS
 <p class="small">書き済みの記事に、黄色いマーカー・太字・Wikimedia Commons の画像を足します。1本15記事前後。</p>
 DECOCARDS
 
+<h2>1d. おもしろエピソードを「話」に書き直す（ChatGPT）</h2>
+<p class="small">数字の紹介やしくみの言い換えになっているエピソードを、人に話したくなる逸話に書き直します。上から順に、1チャットに1つずつ送ってください。EPISTATUS</p>
+EPICARDS
+
 <h2>1c. 選手カードを詳しくする（ChatGPT）</h2>
 <p class="small">1本5人。7項目を見出しにした穴埋めの型で、Wikipedia・ニュース・高校野球や大学野球の記録まで調べて書きます。書いたカードはサイトの選手カードに自動で差し替わります。</p>
 PLAYERCARDS
@@ -356,6 +360,54 @@ def deco_prompt(ids, arts):
    - コミットメッセージ：`<ID> 装飾と画像を追加`
 3. 全部終えたら `{branch}` から main へのプルリクエストを作る。タイトルは「記事の装飾と画像（{ids[0]}〜{ids[-1]}）」、本文に直した ID の一覧と、画像を入れた ID
 4. チャットには、直した ID の一覧と PR の URL だけを返す
+- 途中で止まったら、どこまでコミットしたかを書いて止まり、「続き」と送られたら次の記事から再開する
+
+# 添付資料
+{attach("docs/content-template.md")}"""
+
+
+# ---- おもしろエピソードを「話」に書き直す ----
+EPI_PER_CHAT = 12
+
+
+def epi_jobs():
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from build_site import load_articles
+    arts = load_articles()
+    # L1 はすべて、L2 はエピソード欄があるものだけ。見直し済み（episode: v2）は除く
+    todo = sorted((i for i, a in arts.items() if a["meta"].get("episode") != "v2"
+                   and (i.count("-") == 1 or "## おもしろエピソード" in a["body"])),
+                  key=lambda x: [int(t) if t.isdigit() else t for t in x.split("-")])
+    n = math.ceil(len(todo) / EPI_PER_CHAT) if todo else 0
+    return [todo[k * len(todo) // n:(k + 1) * len(todo) // n] for k in range(n)]
+
+
+def epi_prompt(ids):
+    branch = f"content/episode-{ids[0]}"
+    return f"""あなたは、野球をまったく知らない初心者向けの観戦ガイドの編集者です。記事の「おもしろエピソード」が、数字の紹介やしくみの言い換えばかりで面白くない、という指摘を受けました。読んだ人が「へえ！」と誰かに話したくなる話に書き直してください。
+
+# 今回見直す記事（{len(ids)} 本）
+{chr(10).join("- " + i for i in ids)}
+
+# 判定と書き直しの基準
+添付「記事テンプレート」の「『おもしろエピソード』の条件」と「『今日の試合で見るなら』の条件」に従う。要点：
+- 良いエピソード＝**誰が／どんな場面で／何が起きて、どうなったか**がそろった「話」。意外な結末・名言・笑える一言・感動のどれかがある
+- 題材は、その疑問のテーマにまつわる歴代の名選手の逸話、珍プレー・珍記録、ルールや言葉が生まれたきっかけ、球場で起きた事件。今年や今日の話にこだわらなくてよい
+- ダメな例：数字・記録の紹介だけ／しくみの言い換え／前日や最近の試合結果の報告／公式記録の細かい注記
+- 見本：2-11「盗塁ってなに？」（main の content/2/2-11.md）。✕「西川遥輝は通算345盗塁、350まであと5」→ ○ 福本豊の1065盗塁と、国民栄誉賞を「立ちションもできへんようになる」と断った話
+- 今のエピソードにある数字・今日の話で役に立つものは、「今日の試合で見るなら」へ移す（同じ内容を2か所に書かない）
+- エピソード欄がない L1 には、条件を満たす話があれば「## 歴史・由来」または「## しくみ」の後ろに「## おもしろエピソード」を新しく作る
+- 条件を満たす話がどうしても見つからなければ、見出しごと削除する。数字の紹介で埋めない
+- 話は、ウェブ検索で記事・球団公式・NPB・Wikipedia などから確認できたものだけ。出典URLを front matter の sources に足す。「〜と伝えられている」など、伝聞は伝聞として書く
+- 口調・装飾（太字・==マーカー==）は、テンプレートと今の記事に合わせる。ほかの見出しの本文は変えない
+
+# やること（1記事ずつ）
+1. main から新しいブランチ `{branch}` を作る（あれば続けて使う）
+2. 上の記事を1本ずつ、リポジトリの `content/<カテゴリ番号>/<ID>.md` を開いて見直し、1本ごとにコミットする
+   - front matter に `episode: v2` を足す（ほかの項目は変えない。sources は追加のみ）
+   - コミットメッセージ：`<ID> おもしろエピソードを書き直し`
+3. 全部終えたら `{branch}` から main へのプルリクエストを作る。タイトルは「おもしろエピソードの書き直し（{ids[0]}〜{ids[-1]}）」、本文に「ID：新しいエピソードの一行要約／削除した場合はその理由」の一覧と、追加した出典URL
+4. チャットには、その一覧と PR の URL だけを返す
 - 途中で止まったら、どこまでコミットしたかを書いて止まり、「続き」と送られたら次の記事から再開する
 
 # 添付資料
@@ -535,14 +587,17 @@ def main():
         else:
             head = f"{j['title']}（{j['part']}）{' '.join(x for x in j['ids'] if x.count('-') == 1)}"
             cards.append(card(i, j["issue"], head, j["prio"], article_prompt(j)))
-    dj, pj = deco_jobs(), player_jobs()
+    dj, pj, ej = deco_jobs(), player_jobs(), epi_jobs()
+    epi = [tool(300 + k, f"エピソード {k + 1}：{ids[0]}〜{ids[-1]}（{len(ids)}本）", epi_prompt(ids)) for k, ids in enumerate(ej)]
     deco = [tool(100 + k, f"装飾と画像 {k + 1}：{ids[0]}〜{ids[-1]}（{len(ids)}本）", deco_prompt(ids, arts)) for k, (ids, arts) in enumerate(dj)]
     pcards = [tool(200 + k, f"選手カード {k + 1}：" + "・".join(g["name"] for g in grp), player_prompt(grp)) for k, grp in enumerate(pj)]
     n = sum(len(j["ids"]) for j in jobs)
     status = f"残り {n} 本・{len(cards)} チャット。" if cards else "書かれていない記事はありません。"
-    out = (PAGE.replace("REPO", REPO).replace("DECOSTATUS", f"残り {sum(len(i) for i, _ in dj)} 本・{len(dj)} チャット。" if dj else "残りはありません。")
+    out = (PAGE.replace("REPO", REPO)
+           .replace("EPISTATUS", f"残り {sum(len(i) for i in ej)} 本・{len(ej)} チャット。" if ej else "残りはありません。").replace("DECOSTATUS", f"残り {sum(len(i) for i, _ in dj)} 本・{len(dj)} チャット。" if dj else "残りはありません。")
            .replace("PLAYERSTATUS", f"残り {sum(len(g) for g in pj)} 人・{len(pj)} チャット。" if pj else "残りはありません。")
            .replace("STATUS", status)
+           .replace("EPICARDS", "\n".join(epi) or '<p class="small">いまは対象の記事がありません。</p>')
            .replace("DECOCARDS", "\n".join(deco) or '<p class="small">いまは対象の記事がありません。</p>')
            .replace("PLAYERCARDS", "\n".join(pcards) or '<p class="small">いまは対象の選手がいません。</p>')
            .replace("CARDS", "\n".join(cards) or '<p class="small">いまは書く記事がありません。3. で疑問を増やせます。</p>')
