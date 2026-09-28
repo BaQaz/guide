@@ -245,13 +245,22 @@ textarea{width:100%;height:220px;margin-top:6px;font:12px/1.5 ui-monospace,monos
 
 <h2>全体の流れ</h2>
 <ol>
-<li><strong>記事を書く</strong>（ChatGPT）… 下の「記事のプロンプト」を1本ずつ新しいチャットに送る。いま STATUS</li>
-<li><strong>PR をマージする</strong>（ChatGPT）… 「PR をまとめてマージ」を送る。マージされると1〜2分でサイトとこのページが自動で作り直される</li>
-<li><strong>疑問を増やす</strong>（ChatGPT）… 「疑問を増やす」を送る → できた PR を 2. と同じようにマージ → このページに新しい疑問の記事プロンプトが出るので 1. に戻る</li>
-<li><strong>ファクトチェック</strong>（Claude・任意）… 「Claude に頼む」の文をコピーして、Claude のプロジェクトに送る</li>
-<li><strong>推敲</strong>（Claude）… 記事がそろったら、hq-chat で文章を推敲してもらう。hq-chat は Claude のスキルなので ChatGPT ではできない</li>
-<li><strong>公開して球場で使う</strong> … 下の「公開」と「球場で使う」</li>
+<li><strong>記事を書く</strong>（ChatGPT）… 「1. 記事のプロンプト」。いま STATUS</li>
+<li><strong>書き済みの記事を見やすくする</strong>（ChatGPT）… 「1b. 記事の装飾と画像」。黄色いマーカー・太字・画像を足す。いま DECOSTATUS</li>
+<li><strong>選手カードを詳しくする</strong>（ChatGPT）… 「1c. 選手カード」。穴埋め式で7項目を全部書く。いま PLAYERSTATUS</li>
+<li><strong>疑問を増やす</strong>（ChatGPT）… 「3. 疑問を増やす」</li>
+<li><strong>サイトに反映する</strong> … 下の「反映のしかた」</li>
+<li><strong>ファクトチェック・推敲</strong>（Claude）… 「4〜5. Claude に頼む」。推敲（hq-chat）は記事がそろってから</li>
 </ol>
+
+<div class="card"><h3>反映のしかた（どの作業のあとも同じ）</h3>
+<ol>
+<li>ChatGPT がブランチにコミットして PR を作る（チャットに PR の URL が返ってくる）</li>
+<li>新しいチャットで「2. PR をまとめてマージ」を送る。PR がいくつあっても1回でよい</li>
+<li>マージされると、GitHub Actions が1〜2分でサイトとこのページを作り直す（<a href="REPO/actions">Actions の画面</a>で緑のチェックになれば完了）</li>
+<li><a href="https://baqaz.github.io/guide/site/">サイト</a>とこのページを再読み込みする。書き終わった分はこのページから消え、残りの分だけが並ぶ。疑問を増やしたときは、新しい疑問の記事プロンプトがここに出る</li>
+</ol>
+<p class="small">Pages への反映は、さらに1分ほど遅れることがあります。変わらないときは少し待ってから再読み込みしてください。</p></div>
 
 <h2>ChatGPT の準備（毎回）</h2>
 <ul>
@@ -262,6 +271,14 @@ textarea{width:100%;height:220px;margin-top:6px;font:12px/1.5 ui-monospace,monos
 
 <h2>1. 記事のプロンプト（優先順）</h2>
 CARDS
+
+<h2>1b. 記事の装飾と画像（ChatGPT）</h2>
+<p class="small">書き済みの記事に、黄色いマーカー・太字・Wikimedia Commons の画像を足します。1本15記事前後。</p>
+DECOCARDS
+
+<h2>1c. 選手カードを詳しくする（ChatGPT）</h2>
+<p class="small">1本5人。7項目を見出しにした穴埋めの型で、Wikipedia・ニュース・高校野球や大学野球の記録まで調べて書きます。書いたカードはサイトの選手カードに自動で差し替わります。</p>
+PLAYERCARDS
 
 <h2>2. PR をまとめてマージ（ChatGPT）</h2>
 TOOL_MERGE
@@ -307,15 +324,163 @@ def card(i, issue, title, prio, prompt):
 <details><summary>中身を見る</summary><textarea id="p{i}" readonly>{html.escape(prompt)}</textarea></details></div>"""
 
 
+# ---- 書き済みの記事を見やすくする（マーカー・太字・画像）----
+DECO_PER_CHAT = 15
+
+
+def deco_jobs():
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from build_site import load_articles
+    arts = load_articles()
+    todo = sorted((i for i, a in arts.items() if a["meta"].get("styled") is not True), key=lambda x: [int(t) if t.isdigit() else t for t in x.split("-")])
+    n = math.ceil(len(todo) / DECO_PER_CHAT) if todo else 0
+    return [(todo[k * len(todo) // n:(k + 1) * len(todo) // n], arts) for k in range(n)]
+
+
+def deco_prompt(ids, arts):
+    branch = f"content/deco-{ids[0]}"
+    bodies = "\n\n".join(attach(f"content/{i[0]}/{i}.md", "（main にある今のファイルを読んで使う）") for i in ids)
+    return f"""あなたは、野球をまったく知らない初心者向けの観戦ガイドの編集者です。すでに書かれた記事を、スマホで読みやすくします。内容（事実・数字・出典）は変えません。
+
+# 今回仕上げる記事（{len(ids)} 本）
+{chr(10).join("- " + i for i in ids)}
+
+# やること（1記事ずつ）
+1. main から新しいブランチ `{branch}` を作る（あれば続けて使う）
+2. 上の記事を1本ずつ、リポジトリの `content/<カテゴリ番号>/<ID>.md` を開いて、添付「記事テンプレート」の「見やすくするための装飾」どおりに直し、1本直すごとにコミットする
+   - **太字**：初めて出てくる用語・覚えてほしい数字・選手名。1段落に1〜2か所
+   - ==黄色いマーカー==：いちばん覚えてほしい一文と「今日見るならここ」。1記事に3〜6か所
+   - 画像：Wikimedia Commons（upload.wikimedia.org）で、本文の理解を助ける画像を探し、見出しと見出しの間に1〜3枚はさむ。キャプションと「出典：Wikimedia Commons／作者名／ライセンス名」を必ず書く。NPB・球団・新聞の写真は使わない。見つからなければ画像なし
+   - 口調（15歳向け、「あなた」「〜なのだ」「〜というわけだ」）に合っていない文があれば直す。ただし事実・数字・出典は変えない
+   - front matter に `styled: true` を足す（ほかの項目は変えない）
+   - コミットメッセージ：`<ID> 装飾と画像を追加`
+3. 全部終えたら `{branch}` から main へのプルリクエストを作る。タイトルは「記事の装飾と画像（{ids[0]}〜{ids[-1]}）」、本文に直した ID の一覧と、画像を入れた ID
+4. チャットには、直した ID の一覧と PR の URL だけを返す
+- 途中で止まったら、どこまでコミットしたかを書いて止まり、「続き」と送られたら次の記事から再開する
+
+# 添付資料
+{attach("docs/content-template.md")}"""
+
+
+# ---- 選手カードを詳しくする（穴埋め式）----
+PLAYERS_PER_CHAT = 5
+CARD_FORM = """## 名前（#背番号、ポジション・役割、投打、年齢）
+
+### 特徴（強み、ユニークポイント）
+- 強み：
+- ユニークポイント：
+
+### 見どころ
+- 今日の試合で見るべき場面：
+- 注目の数字・プレー：
+- 対戦相手との関係（今日の先発・打線との相性）：
+
+### 出立ち
+- 身長・体重・体格：
+- 投打・フォームの特徴：
+- 見た目の特徴（髪型・ひげ・ルーティンなど）：
+- 背番号の由来・愛称・登場曲：
+
+### プロまでの経歴やエピソード（野球内外）、印象的な試合、実績
+- 出身地・家族：
+- 経歴（小学校・中学・高校・大学・社会人／独立リーグ・海外）：
+- 野球のエピソード：
+- 野球以外のエピソード：
+- 印象的な試合：
+- 実績（甲子園・大学リーグ・代表・表彰など）：
+- ドラフト・入団（年・順位・球団・契約）：
+
+### プロでの経歴やエピソード（野球内外）、印象的な試合、実績
+- 経歴（年ごとの主な出来事・移籍）：
+- 野球のエピソード：
+- 野球以外のエピソード：
+- 印象的な試合：
+- 実績（タイトル・表彰・通算記録・代表）：
+
+### 直近1年での経歴やエピソード（野球内外）、印象的な試合、実績
+- 今季の成績（9/26時点）：
+- 経歴（昇格・降格・故障・役割の変化・契約）：
+- 野球のエピソード：
+- 野球以外のエピソード：
+- 印象的な試合：
+- 実績（今季の記録・表彰）：
+
+### 直近数試合の実績やエピソード、調子やそれを踏まえた分析や論点、見どころ
+- 直近の試合結果（9/24・9/26・9/27。出場していなければ最後に出た試合）：
+- エピソード：
+- 調子：
+- 分析・論点：
+- 今日の見どころ：
+
+### 出典
+- """
+
+
+def player_jobs():
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from build_site import load_players
+    players = [g for g in load_players()[0] if not g.get("detail")]
+    n = math.ceil(len(players) / PLAYERS_PER_CHAT) if players else 0
+    return [players[k * len(players) // n:(k + 1) * len(players) // n] for k in range(n)]
+
+
+def pfile(g):
+    return "data/players/detail/" + g["team"] + "-" + re.sub(r"[（(].*$|\s", "", g["name"]) + ".md"
+
+
+def player_prompt(group):
+    branch = "content/players-" + re.sub(r"\s", "", group[0]["name"])
+    cards = "\n\n".join(attach(f"{g['team']}｜{g['section']}の今のカード", f"## {g['title']}\n{g['body']}") for g in group)
+    return f"""あなたは、プロ野球の観戦用選手名鑑の編集者です。2026年9月28日（月）18:00 の「千葉ロッテ×北海道日本ハム」（ZOZOマリン）を、野球をまったく知らない人が観ます。次の {len(group)} 人のカードを、下の穴埋めの型で詳しく書き直してください。
+
+# 今回の人（{len(group)} 人）
+{chr(10).join(f"- {g['title']}（{g['team']}・{g['section']}）→ `{pfile(g)}`" for g in group)}
+
+# 調べ方（必ずすべて当たる）
+- Wikipedia（日本語・英語）、NPB・球団公式の選手ページと成績
+- スポーツ紙・ウェブニュース（日刊スポーツ、スポニチ、スポーツ報知、デイリー、Full-Count、Number など）
+- 高校野球・大学野球・社会人野球の記録やニュース（甲子園の記録、大学リーグの記録）
+- プロ野球のまとめサイトやファンのブログは、話の手がかりとして読む。書くときは、ニュースや公式で裏が取れたことだけにする
+- 2026年の出来事はあなたの学習データより新しい。今季・直近の数字と出来事は、ウェブで確認できたものだけを書く
+
+# 書き方（穴埋め。サボらない）
+- 下の型の **すべての見出しと、すべての「- 項目：」を埋める**。見出しも項目も消さない、まとめない、順番を変えない
+- 見出しの（）の中は例ではなく、全部書く項目。たとえば「野球内外」は野球のエピソードと野球以外のエピソードの両方、「印象的な試合」と「実績」も必ず書く
+- 1項目は1〜3文。数字・年・大会名・対戦相手など、具体的に書く。「〜と言われる」でぼかさない
+- 本当に公開情報が見つからない項目だけ「公開情報が見つかりませんでした」と書く（空欄にしない）
+- 口調は「〜なのだ」「〜というわけだ」を基本にした、淡々とやさしい説明。専門用語はかっこで言い換える
+- 大事な一文は ==黄色いマーカー== 、用語と数字は **太字**。1人に3〜6か所
+- 今のカードに書いてあることは、確認して正しければ生かす。違っていれば直す
+- 最後の「### 出典」に、使ったページの URL を全部並べる
+
+# 型（この形で1人1ファイル）
+```
+{CARD_FORM}
+```
+
+# やること
+1. main から新しいブランチ `{branch}` を作る（あれば続けて使う）
+2. 1人書き終えるごとに、上の一覧の `data/players/detail/…md` に新しいファイルとして書いてコミットする（1ファイル＝1人。今の lotte.md・fighters.md・managers.md は変えない）。コミットメッセージ：`<名前> のカードを詳しくする`
+3. 全員終えたら `{branch}` から main へのプルリクエストを作る。タイトルは「選手カードを詳しくする（{group[0]['name']}ほか）」、本文に書いた人の一覧と、「公開情報が見つかりませんでした」にした項目
+4. チャットには、書いた人の一覧と PR の URL だけを返す
+- 途中で止まったら、どこまでコミットしたかを書いて止まり、「続き」と送られたら次の人から再開する
+
+# 添付資料
+{cards}
+
+{attach("data/today.md")}"""
+
+
 MERGE_PROMPT = f"""GitHub のリポジトリ BaQaz/guide の、open なプルリクエストを確認してマージしてください。あなたはこのリポジトリに書き込めます。
 
 # 対象
 - ブランチ名が `content/` で始まる open な PR すべて（番号の小さい順）
 
 # マージしてよい条件（すべて満たすもの）
-- 変更したファイルが `content/` の下の .md だけ（ブランチ `content/9-…` は `data/players/fighters.md` だけ、ブランチ `content/tree-…` は `docs/question-tree.md` だけ）
-- 記事ファイルの先頭に front matter（--- で囲む）があり、`id` がファイル名と同じ
+- 変更したファイルが次の範囲だけ：記事のブランチは `content/` の下の .md、`content/9-…` は `data/players/fighters.md`、`content/tree-…` は `docs/question-tree.md`、`content/players-…` は `data/players/detail/` の下の .md、`content/deco-…` は `content/` の下の .md
+- 記事ファイルの先頭に front matter（--- で囲む）があり、`id` がファイル名と同じ（記事のファイルだけ）
 - 本文に ``` のコードブロックや `=== FILE:` の区切りが入っていない
+- 画像（`![…](…)`）があれば、URL が `https://upload.wikimedia.org/` で始まり、出典が書いてある
 - main と衝突（conflict）していない
 
 # やること
@@ -370,15 +535,22 @@ def main():
         else:
             head = f"{j['title']}（{j['part']}）{' '.join(x for x in j['ids'] if x.count('-') == 1)}"
             cards.append(card(i, j["issue"], head, j["prio"], article_prompt(j)))
+    dj, pj = deco_jobs(), player_jobs()
+    deco = [tool(100 + k, f"装飾と画像 {k + 1}：{ids[0]}〜{ids[-1]}（{len(ids)}本）", deco_prompt(ids, arts)) for k, (ids, arts) in enumerate(dj)]
+    pcards = [tool(200 + k, f"選手カード {k + 1}：" + "・".join(g["name"] for g in grp), player_prompt(grp)) for k, grp in enumerate(pj)]
     n = sum(len(j["ids"]) for j in jobs)
     status = f"残り {n} 本・{len(cards)} チャット。" if cards else "書かれていない記事はありません。"
-    out = (PAGE.replace("REPO", REPO).replace("STATUS", status)
+    out = (PAGE.replace("REPO", REPO).replace("DECOSTATUS", f"残り {sum(len(i) for i, _ in dj)} 本・{len(dj)} チャット。" if dj else "残りはありません。")
+           .replace("PLAYERSTATUS", f"残り {sum(len(g) for g in pj)} 人・{len(pj)} チャット。" if pj else "残りはありません。")
+           .replace("STATUS", status)
+           .replace("DECOCARDS", "\n".join(deco) or '<p class="small">いまは対象の記事がありません。</p>')
+           .replace("PLAYERCARDS", "\n".join(pcards) or '<p class="small">いまは対象の選手がいません。</p>')
            .replace("CARDS", "\n".join(cards) or '<p class="small">いまは書く記事がありません。3. で疑問を増やせます。</p>')
            .replace("TOOL_MERGE", tool(0, "PR をまとめてマージ", MERGE_PROMPT, "ChatGPT に送ると、記事の PR を確認してマージします。記事を書き終えるたびに何度送ってもかまいません"))
            .replace("TOOL_MORE", tool(1, "疑問を増やす", MORE_PROMPT()))
            .replace("TOOL_CLAUDE", tool(2, "Claude に頼む（必要な段落だけ送る）", CLAUDE_TEXT)))
     (ROOT / "docs/gpt-prompts.html").write_text(out, encoding="utf-8")
-    print(f"docs/gpt-prompts.html: プロンプト {len(cards)} 件（残り {n} 本）")
+    print(f"docs/gpt-prompts.html: 記事 {len(cards)} 件（残り {n} 本）・装飾 {len(deco)} 件・選手 {len(pcards)} 件")
 
 
 if __name__ == "__main__":

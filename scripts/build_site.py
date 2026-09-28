@@ -95,6 +95,20 @@ def load_players():
                 name = re.split(r"[（(]", title)[0].strip()
                 groups.append({"team": team, "section": section or team, "name": name,
                                "title": title, "body": "\n".join(block.splitlines()[1:]).strip()})
+    # data/players/detail/<チーム>-<名前>.md があれば、その選手のカードを詳しい版に差し替える（なければ追加）
+    norm = lambda x: re.sub(r"[（(].*$", "", x).replace(" ", "").replace("　", "").replace("髙", "高").replace("﨑", "崎")
+    for p in sorted((base / "detail").glob("*.md")) if (base / "detail").exists() else []:
+        text = p.read_text(encoding="utf-8").strip()
+        m = re.match(r"^## (.+?)\n(.*)$", text, re.S)
+        if not m:
+            continue
+        title, body = m.group(1).strip(), m.group(2).strip()
+        hit = next((g for g in groups if norm(g["name"]) == norm(title)), None)
+        if hit:
+            hit.update(title=title, body=body, detail=True)
+        else:
+            team = p.stem.split("-")[0]
+            groups.append({"team": team, "section": "追加の選手", "name": norm(title), "title": title, "body": body, "detail": True})
     lineup = []
     readme = base / "README.md"
     if readme.exists():

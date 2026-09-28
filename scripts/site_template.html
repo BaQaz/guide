@@ -103,6 +103,10 @@ table{border-collapse:collapse;width:100%;font-size:.88rem}
 ul,ol{padding-left:1.3em;margin:0 0 1.1em}
 li{margin:.2em 0}
 .src{font-size:.78rem;color:var(--sub);word-break:break-all;line-height:1.7}
+mark{background:linear-gradient(transparent 55%,#fff176 55%);color:inherit;padding:0 1px}
+strong{font-weight:700}
+figure{margin:20px 0}figure img{display:block;width:100%;max-height:360px;object-fit:cover;border-radius:8px;background:var(--surface)}
+figcaption{font-size:.78rem;color:var(--sub);line-height:1.6;margin-top:6px}figcaption span{font-size:.72rem}
 hr{border:0;border-top:1px solid var(--line);margin:32px 0}
 textarea{width:100%;min-height:140px;font:13px/1.5 ui-monospace,monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
 .btn{font:inherit;font-size:.9rem;border:0;border-radius:999px;padding:9px 18px;background:var(--accent);color:var(--accent-ink);cursor:pointer;margin:4px 6px 4px 0}
@@ -118,7 +122,7 @@ textarea{width:100%;min-height:140px;font:13px/1.5 ui-monospace,monospace;backgr
 const D = /*__DATA__*/null;
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`(.+?)`/g,'<code>$1</code>')
+const inline = s => esc(s).replace(/==(.+?)==/g,'<mark>$1</mark>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`(.+?)`/g,'<code>$1</code>')
   .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
   .replace(/(^|[^"])(https?:\/\/[^\s<]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>');
 function md(src){
@@ -131,6 +135,7 @@ function md(src){
     const l=raw.trimEnd(); let m;
     if(!l.trim()){flush();continue}
     if(l.startsWith('|')){ if(!table){flush();table=[]} table.push(l); continue }
+    if((m=l.trim().match(/^!\[([^\]]*)\]\((https:\/\/[^\s)]+)(?:\s+"([^"]*)")?\)$/))){flush();out.push(`<figure><img src="${esc(m[2])}" alt="${esc(m[1])}" loading="lazy" onerror="this.closest('figure').hidden=true"><figcaption>${esc(m[1])}${m[3]?`<br><span>${esc(m[3])}</span>`:''}</figcaption></figure>`);continue}
     if((m=l.match(/^(#{1,4}) (.+)/))){flush();const n=Math.max(3,m[1].length);out.push(`<h${n}>${inline(m[2])}</h${n}>`);continue}
     if((m=l.match(/^\s*[-*] (.+)/))){ if(para.length||table)flush(); (list=list||[]).push(m[1]); continue }
     if(list){flush()} para.push(l.trim());
@@ -160,6 +165,7 @@ const askQ = (q) => {
 // 記事の見出し：その見出しの本文と、記事全体を添えて深掘りしてもらう
 const deepSec = (id, head, text) => `${CTX}\n\n観戦ガイドの記事${artText(id)?'':'「'+id+'」'}を読んでいます。その中の見出し「${head}」について、もっと詳しく知りたいです。\n\n# 知りたい部分（見出し「${head}」の本文）\n-----\n${plain(text)}\n-----\n\n# 記事の全文（参考）\n-----\n${artText(id)}\n-----\n\nこの部分を、背景・具体的な数字や場面・よくある誤解・実際に球場で見るとどう見えるか、を足して詳しく説明してください。ガイドの記述に誤りや古い情報があれば指摘してください。${RULES}${TODAY()}`;
 const deepPlayer = (p) => `${CTX}\n\n観戦ガイドの選手カード「${p.title}」（${p.team}・${p.section}）を読みました。\n\n-----\n${plain(p.body)}\n-----\n\nこの人物について、さらに詳しく教えてください。特に、(1) 今季の成績と最近の調子（直近の試合結果）、(2) 人柄がわかるエピソードや名言、(3) 今日の試合で注目すべき場面、を知りたいです。カードの記述に誤りや古い情報があれば指摘してください。${RULES}${TODAY()}`;
+const deepPlayerSec = (p, head, text) => `${CTX}\n\n観戦ガイドの選手カード「${p.title}」（${p.team}）の「${head}」を読みました。\n\n# 知りたい部分\n-----\n${plain(text)}\n-----\n\n# カードの全文（参考）\n-----\n${plain(p.body)}\n-----\n\nこの部分を、Wikipedia・ニュース・高校野球や大学野球の記録なども調べて、具体的なエピソードや数字を足して詳しく教えてください。カードの記述に誤りや古い情報があれば指摘してください。${RULES}${TODAY()}`;
 const newPlayer = (name, team) => `${CTX}\n\n${team}の「${name}」選手が今日出ています。観戦ガイドにこの選手のカードがないので、次の7項目で教えてください。\n- 特徴：\n- 見どころ：\n- 出立ち：（体格・背番号・投打など）\n- プロまで：\n- プロで：\n- 直近1年：\n- 直近数試合：${RULES}${TODAY()}`;
 
 /* ---- 疑問ツリーとガイド ---- */
@@ -284,7 +290,10 @@ function lineup(){
 }
 function player(i){
   const p = D.players[i]; if(!p) return lineup();
-  $('#app').innerHTML = `<a class="back" href="#/lineup">← スタメンと選手カード</a><p class="eyebrow">${esc(p.team)}｜${esc(p.section)}</p><h1>${esc(p.title)}</h1><p>${gptBtn(deepPlayer(p),'この選手をGPTで深掘り')}</p><div class="article">${md(p.body)}</div>`;
+  let h = `<a class="back" href="#/lineup">← スタメンと選手カード</a><p class="eyebrow">${esc(p.team)}｜${esc(p.section)}</p><h1>${esc(p.title)}</h1><p>${gptBtn(deepPlayer(p),'この選手をGPTで深掘り')}</p><div class="article">`;
+  p.body.split(/^(?=### )/m).forEach(sec=>{ const m=sec.match(/^### (.+)\n?([\s\S]*)$/);
+    h += m ? `<div class="sec-head"><h2>${inline(m[1])}</h2>${gptBtn(deepPlayerSec(p, m[1], m[2]),'ここを詳しく聞く')}</div>${md(m[2])}` : md(sec) });
+  $('#app').innerHTML = h + '</div>';
 }
 const PHOTO_PROMPT = `${CTX}\n\n添付した写真（球場のビジョンのスタメン表、またはスコアボード）を読み取って、観戦ガイドに貼り付けるデータを作ってください。\n\n# 出力のしかた（厳守）\n- 次の形のJSONだけを、1つのコードブロックで出してください。説明はコードブロックの外に短く\n- 写っていない項目は省略してください（推測で埋めない）。読み取れない文字は「?」にしてください\n- 選手名はフルネームの漢字（外国人選手はカタカナ）。守備位置は「投 捕 一 二 三 遊 左 中 右 指」の1文字\n- fighters＝日本ハム（先攻）、lotte＝ロッテ（後攻）。取り違えないこと\n\n## スタメン表の写真のとき\n{"lineup": {"lotte": [{"order": 1, "pos": "左", "name": "西川史礁"}], "fighters": [{"order": 1, "pos": "遊", "name": "水野達稀"}], "pitchers": {"lotte": "ジャクソン", "fighters": "福島蓮"}}}\n（片方のチームしか写っていなければ、そのチームだけ）\n\n## スコアボードの写真のとき\n{"score": {"inning": "5回裏", "fighters": [0, 0, 1, 0, 0], "lotte": [0, 2, 0, 0], "R": {"fighters": 1, "lotte": 2}, "H": {"fighters": 4, "lotte": 6}, "E": {"fighters": 0, "lotte": 1}, "count": {"B": 1, "S": 2, "O": 1}, "bases": [1, 0, 0], "pitcher": "福島蓮", "batter": "山口航輝", "memo": "球速など、ボードに出ている情報を短く"}}\n（まだ攻撃していない回は配列に入れない。bases は1塁・2塁・3塁の順に、ランナーがいれば1）\n\n最後に、コードブロックの外で「この状況で初心者が見るポイント」を2〜3行で書いてください。`;
 const SCORE_ASK = sc => `${CTX}\n\n今の試合状況は次のとおりです（fighters＝日本ハム・先攻、lotte＝ロッテ・後攻）。\n${JSON.stringify(sc)}\n\nこの状況を初心者向けに解説してください。どちらが有利か、次の見どころ、日本ハムの2位争い（西武との差）への影響を、ウェブ検索で今日の西武戦の途中経過も確認したうえで教えてください。${RULES}${TODAY()}`;
