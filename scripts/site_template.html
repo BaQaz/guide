@@ -89,6 +89,9 @@ a{color:var(--accent)}
 
 /* 記事 */
 .article h2{margin:2.2em 0 .6em}
+.aside{margin:1em 0;padding:10px 14px;background:var(--surface);border-left:3px solid var(--accent);border-radius:0 var(--radius) var(--radius) 0;font-size:.92rem;line-height:1.8}
+.aside p{margin:.3em 0}
+.sec-rel{margin:12px 0 4px;font-size:.75rem;font-weight:700;color:var(--sub);letter-spacing:.06em}
 .sec-head{display:flex;align-items:flex-start;gap:10px;margin:2.2em 0 .7em}
 .sec-head h2{margin:0;flex:1}
 .gpt{font:inherit;font-size:.74rem;line-height:1;border:1px solid var(--line);background:var(--bg);color:var(--sub);border-radius:999px;padding:7px 10px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
@@ -133,13 +136,15 @@ const inline = s => esc(s).replace(/==(.+?)==/g,'<mark>$1</mark>').replace(/\*\*
   .replace(/(^|[^"])(https?:\/\/[^\s<]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>');
 function md(src){
   src = src.replace(/<!--[\s\S]*?-->/g,'');
-  const out=[]; let list=null, para=[], table=null;
-  const flush=()=>{ if(para.length){out.push('<p>'+inline(para.join(''))+'</p>');para=[]}
+  const out=[]; let list=null, para=[], table=null, quote=null;
+  const flush=()=>{ if(quote){out.push('<div class="aside">'+md(quote.join('\n'))+'</div>');quote=null}
+    if(para.length){out.push('<p>'+inline(para.join(''))+'</p>');para=[]}
     if(list){out.push('<ul>'+list.map(i=>'<li>'+inline(i)+'</li>').join('')+'</ul>');list=null}
     if(table){out.push('<div class="scroll"><table>'+table.filter(r=>!/^\|\s*-/.test(r)).map((r,i)=>'<tr>'+r.replace(/^\||\|$/g,'').split('|').map(c=>i?'<td>'+inline(c.trim())+'</td>':'<th>'+inline(c.trim())+'</th>').join('')+'</tr>').join('')+'</table></div>');table=null} };
   for(const raw of src.split('\n')){
     const l=raw.trimEnd(); let m;
     if(!l.trim()){flush();continue}
+    if((m=l.match(/^> ?(.*)$/))){ if(!quote){flush();quote=[]} quote.push(m[1]); continue }
     if(l.startsWith('|')){ if(!table){flush();table=[]} table.push(l); continue }
     if((m=l.trim().match(/^!\[([^\]]*)\]\((https:\/\/[^\s)]+)(?:\s+"([^"]*)")?\)$/))){flush();out.push(`<figure><img src="${esc(m[2])}" alt="${esc(m[1])}" loading="lazy" onerror="this.closest('figure').hidden=true"><figcaption>${esc(m[1])}${m[3]?`<br><span>${esc(m[3])}</span>`:''}</figcaption></figure>`);continue}
     if((m=l.match(/^(#{1,4}) (.+)/))){flush();const n=Math.max(3,m[1].length);out.push(`<h${n}>${inline(m[2])}</h${n}>`);continue}
@@ -159,7 +164,7 @@ function gptBtn(prompt, label){ PROMPTS.push(prompt); return `<button class="gpt
 async function copyText(t){ try{ await navigator.clipboard.writeText(t); return true }catch(e){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); let ok=false; try{ok=document.execCommand('copy')}catch(_){} ta.remove(); return ok } }
 document.addEventListener('click', async e=>{ const b=e.target.closest('.gpt'); if(!b) return; e.preventDefault();
   const ok = await copyText(PROMPTS[+b.dataset.p]); const t=b.innerHTML; b.textContent= ok?'コピーしました。ChatGPTに貼ってください':'コピーできませんでした'; b.classList.add('done'); setTimeout(()=>{b.innerHTML=t;b.classList.remove('done')},2500) });
-const plain = s => String(s||'').replace(/<!--[\s\S]*?-->/g,'').trim();
+const plain = s => String(s||'').replace(/<!--[\s\S]*?-->/g,'').replace(/^関連[:：].*$/gm,'').trim();
 const artText = id => { const a=D.articles[id], q=allQ[id]; return a ? `「${clean(a.meta.title||q.title)}」\n${plain(a.body)}` : '' };
 // まだ記事がない疑問：親の記事（あれば）と今日の試合データを添えて、ガイドと同じ型で答えてもらう
 const askQ = (q) => {
@@ -276,8 +281,12 @@ function article(id){
   else{
     if(a.meta.needs_check) h += '<div class="note">この記事には、まだ公式情報で確認できていない内容が含まれます。</div>';
     h += '<div class="article">';
-    a.body.split(/^(?=## )/m).forEach(sec=>{ const m=sec.match(/^## (.+)\n?([\s\S]*)$/);
-      h += m ? `<div class="sec-head"><h2>${inline(m[1])}</h2>${gptBtn(deepSec(id, m[1], m[2]),'ここを詳しく聞く')}</div>${md(m[2])}` : md(sec) });
+    // 「関連：1-14 5-03-c」の行は、その見出しの下に関連記事ボタンとして出す
+    a.body.split(/^(?=## )/m).forEach(sec=>{ const rel=[];
+      sec = sec.replace(/^関連[:：]\s*(.+)$/gm, (_,ids)=>{ rel.push(...ids.split(/[\s,、]+/).filter(r=>allQ[r])); return '' });
+      const relH = rel.length ? `<p class="sec-rel">この話の関連記事</p><div class="qs">${rel.map(r=>qBtn(allQ[r])).join('')}</div>` : '';
+      const m=sec.match(/^## (.+)\n?([\s\S]*)$/);
+      h += (m ? `<div class="sec-head"><h2>${inline(m[1])}</h2>${gptBtn(deepSec(id, m[1], m[2]),'ここを詳しく聞く')}</div>${md(m[2])}` : md(sec)) + relH });
     h += '</div>';
     const src = a.meta.sources||[]; if(src.length) h += `<hr><p class="eyebrow">出典</p><div class="src">${src.map(inline).join('<br>')}</div>`;
   }
