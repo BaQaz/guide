@@ -8,6 +8,7 @@
 import html
 import math
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -268,6 +269,10 @@ textarea{width:100%;height:220px;margin-top:6px;font:12px/1.5 ui-monospace,monos
 <li>書き込みの確認を求められたら許可する。途中で止まったら「続き」と送る（コミット済みの次から再開します）</li>
 <li>急ぐときは、送るときに「ブランチは作らず main に直接コミットしてください。PR も不要です」と一言添えると、書いたそばから反映されます（レビューなし）</li>
 </ul>
+
+<h2>0. 途中で止まった作業の続き</h2>
+<p class="small">GPT が途中で止まり、PR になっていないブランチです。新しいプロンプトより先に、これを1チャットずつ送ってください。同じブランチで続きを書き、PR まで作ります。</p>
+RESUMECARDS
 
 <h2>1. 記事のプロンプト（優先順）</h2>
 CARDS
@@ -606,6 +611,107 @@ def players_done():
     return len(re.findall(r"^## ", read("data/players/fighters.md"), re.M)) >= 15
 
 
+# ---- 途中で止まったブランチ（main に入っていない content/ ブランチ）----
+def _git(*args):
+    return subprocess.run(["git", *args], capture_output=True, text=True, cwd=ROOT).stdout
+
+
+def _open_pr_heads():
+    """open な PR のブランチ名。gh が使えないとき（手元など）は空"""
+    try:
+        out = subprocess.run(["gh", "pr", "list", "--state", "open", "--limit", "200", "--json", "headRefName", "-q", ".[].headRefName"],
+                             capture_output=True, text=True, cwd=ROOT, timeout=30)
+        return set(out.stdout.split()) if out.returncode == 0 else set()
+    except Exception:
+        return set()
+
+
+def stalled_branches():
+    base = "origin/main" if _git("rev-parse", "--verify", "-q", "origin/main").strip() else "HEAD"
+    heads = _open_pr_heads()
+    res = []
+    for ref in _git("for-each-ref", "--format=%(refname:short)", "refs/remotes/origin/content/").split():
+        br = ref[len("origin/"):]
+        kind = next((k for k in ("players", "episode", "deco") if br.startswith(f"content/{k}-")), None)
+        if not kind or "backup" in br or br in heads:
+            continue
+        if _git("rev-list", "--count", f"{base}..{ref}").strip() in ("", "0"):
+            continue
+        done = set()
+        for f in _git("-c", "core.quotepath=off", "diff", "--name-only", f"{base}...{ref}").split("\n"):
+            if kind == "players" and f.startswith("data/players/detail/") and f.endswith(".md"):
+                done.add(Path(f).name)
+            elif kind in ("episode", "deco") and f.startswith("content/") and f.endswith(".md"):
+                flag = "episode: v2" if kind == "episode" else "styled: true"
+                if re.search(rf"^{flag}\s*$", _git("show", f"{ref}:{f}"), re.M):
+                    done.add(Path(f).stem)
+        if done:
+            res.append({"branch": br, "kind": kind, "done": done})
+    return res
+
+
+def resume_split(kind, order, size, stalled):
+    """order: 残りの項目キー（main で未完了）を並び順で。止まったブランチの担当の続きを割り当て、残りを返す"""
+    claimed = set().union(*[b["done"] for b in stalled if b["kind"] == kind]) if stalled else set()
+    pool = [x for x in order if x not in claimed]
+    resumes = []
+    full = sorted(set(order) | claimed, key=order_key) if kind != "players" else ALL_PLAYER_FILES
+    for b in [b for b in stalled if b["kind"] == kind]:
+        last = max(full.index(x) for x in b["done"])
+        take = []
+        for x in full[last + 1:]:
+            if len(take) + len(b["done"]) >= size or x not in pool:
+                break
+            take.append(x)
+        for x in take:
+            pool.remove(x)
+        resumes.append((b, take))
+    return resumes, pool
+
+
+def order_key(x):
+    return [int(t) if t.isdigit() else t for t in re.split(r"[-]", x)] if re.match(r"^\d-\d\d", x) else [x]
+
+
+def resume_header(b, take, label):
+    done = "、".join(sorted(b["done"], key=order_key))
+    rest = "、".join(label(x) for x in take)
+    return f"""【途中からの再開】これは、途中で止まった作業の続きです。
+- ブランチ `{b['branch']}` には、すでに次の分がコミットされています：{done}
+- これらは書き直さないでください。{('残りの ' + rest + ' だけを、同じブランチに続けて書いてください。') if take else '新しく書くものはありません。'}
+- 最後に `{b['branch']}` から main へのプルリクエストを作ってください（すでに open な PR があれば作らない）。PR 本文には、コミット済みの分と今回書いた分の両方を並べる
+
+"""
+
+
+def resume_cards(stalled, arts_by_id, players):
+    """戻り値：(カードHTMLのリスト, エピソード残り, 装飾残り, 選手残り)"""
+    cards = []
+    # エピソード
+    epi_todo = [i for i in sorted(arts_by_id, key=order_key) if arts_by_id[i]["meta"].get("episode") != "v2"
+                and (i.count("-") == 1 or "## おもしろエピソード" in arts_by_id[i]["body"])]
+    rs, epi_rest = resume_split("episode", epi_todo, EPI_PER_CHAT, stalled)
+    for b, take in rs:
+        body = epi_prompt(take) if take else "（書くものはありません）"
+        if take:
+            body = body.replace(f"content/episode-{take[0]}", b["branch"])
+        cards.append(("エピソードの続き", b, take, resume_header(b, take, str) + body))
+    # 装飾
+    deco_todo = [i for i in sorted(arts_by_id, key=order_key) if arts_by_id[i]["meta"].get("styled") is not True]
+    rs, deco_rest = resume_split("deco", deco_todo, DECO_PER_CHAT, stalled)
+    for b, take in rs:
+        body = deco_prompt(take, arts_by_id).replace(f"content/deco-{take[0]}", b["branch"]) if take else "（書くものはありません）"
+        cards.append(("装飾と画像の続き", b, take, resume_header(b, take, str) + body))
+    # 選手
+    byfile = {Path(pfile(g)).name: g for g in players}
+    rs, pl_rest = resume_split("players", list(byfile), PLAYERS_PER_CHAT, stalled)
+    for b, take in rs:
+        grp = [byfile[x] for x in take]
+        body = player_prompt(grp).replace("content/players-" + re.sub(r"\s", "", grp[0]["name"]), b["branch"]) if grp else "（書くものはありません）"
+        cards.append(("選手カードの続き", b, take, resume_header(b, take, lambda x: byfile[x]["name"]) + body))
+    return cards, epi_rest, deco_rest, [byfile[x] for x in pl_rest]
+
+
 def main():
     cards = []
     jobs = split_jobs()
@@ -617,7 +723,19 @@ def main():
         else:
             head = f"{j['title']}（{j['part']}）{' '.join(x for x in j['ids'] if x.count('-') == 1)}"
             cards.append(card(i, j["issue"], head, j["prio"], article_prompt(j)))
-    dj, pj, ej = deco_jobs(), player_jobs(), epi_jobs()
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from build_site import load_articles, load_players
+    global ALL_PLAYER_FILES
+    all_players = load_players()[0]
+    ALL_PLAYER_FILES = [Path(pfile(g)).name for g in all_players]
+    arts_all = load_articles()
+    stalled = stalled_branches()
+    rcards, epi_rest, deco_rest, pl_rest = resume_cards(stalled, arts_all, [g for g in all_players if not g.get("detail")])
+    chunk = lambda xs, n: [xs[k * len(xs) // m:(k + 1) * len(xs) // m] for m in [math.ceil(len(xs) / n)] for k in range(m)] if xs else []
+    ej = chunk(epi_rest, EPI_PER_CHAT)
+    dj = [(ids, arts_all) for ids in chunk(deco_rest, DECO_PER_CHAT)]
+    pj = chunk(pl_rest, PLAYERS_PER_CHAT)
+    resume = [tool(400 + k, f"{t}：{b['branch']}（済み {len(b['done'])}・残り {len(take)}）", pr) for k, (t, b, take, pr) in enumerate(rcards)]
     epi = [tool(300 + k, f"エピソード {k + 1}：{ids[0]}〜{ids[-1]}（{len(ids)}本）", epi_prompt(ids)) for k, ids in enumerate(ej)]
     deco = [tool(100 + k, f"装飾と画像 {k + 1}：{ids[0]}〜{ids[-1]}（{len(ids)}本）", deco_prompt(ids, arts)) for k, (ids, arts) in enumerate(dj)]
     pcards = [tool(200 + k, f"選手カード {k + 1}：" + "・".join(g["name"] for g in grp), player_prompt(grp)) for k, grp in enumerate(pj)]
@@ -628,6 +746,7 @@ def main():
            .replace("PLAYERSTATUS", f"残り {sum(len(g) for g in pj)} 人・{len(pj)} チャット。" if pj else "残りはありません。")
            .replace("STATUS", status)
            .replace("EPICARDS", "\n".join(epi) or '<p class="small">いまは対象の記事がありません。</p>')
+           .replace("RESUMECARDS", "\n".join(resume) or '<p class="small">いまは止まっている作業はありません。</p>')
            .replace("DECOCARDS", "\n".join(deco) or '<p class="small">いまは対象の記事がありません。</p>')
            .replace("PLAYERCARDS", "\n".join(pcards) or '<p class="small">いまは対象の選手がいません。</p>')
            .replace("CARDS", "\n".join(cards) or '<p class="small">いまは書く記事がありません。3. で疑問を増やせます。</p>')

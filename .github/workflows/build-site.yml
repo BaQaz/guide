@@ -2,12 +2,14 @@ name: サイトを組み立てる
 
 on:
   push:
-    branches: [main]
+    # main へのマージに加え、GPT の作業ブランチ（content/…）への push でも、止まった作業の続きのプロンプトを出し直す
+    branches: [main, "content/**"]
     paths: ["content/**", "data/**", "docs/question-tree.md", "docs/content-template.md", "scripts/**"]
   workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: read
 
 # PR を続けてマージしても、組み立てが1つずつ順番に走るようにする
 concurrency:
@@ -21,17 +23,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       # 最新の main から、サイトと「まだ書かれていない記事だけ」のプロンプト集を作り直してコミットする。
       # 別のマージと push がぶつかったら、最新の main で作り直して再挑戦する
       - name: 組み立ててコミット
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898699+github-actions[bot]@users.noreply.github.com"
           for i in 1 2 3 4 5; do
             git fetch origin main && git reset --hard origin/main
+            git fetch -q origin '+refs/heads/content/*:refs/remotes/origin/content/*' || true
             python3 scripts/build_site.py && python3 scripts/build_prompts.py
             git add site/index.html docs/gpt-prompts.html
             git diff --cached --quiet && exit 0
