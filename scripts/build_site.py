@@ -7,6 +7,7 @@
   content/**/*.md              記事（1問1ファイル）
   content/**/*.md の「まとめ書き」  `=== FILE: content/1/1-01.md ===` 区切りで複数記事を1ファイルに書いたもの
   data/players/*.md            選手・監督カード
+  data/result.json             試合後の最終スコア（あれば速報ボードに出す）
 標準ライブラリだけで動く。Markdown の表示はブラウザ側の小さな変換で行う。
 """
 import json
@@ -134,6 +135,9 @@ def main():
     data["lineup_announced"] = readme.exists() and "## 発表スタメン" in readme.read_text(encoding="utf-8")
     today = (ROOT / "data/today.md").read_text(encoding="utf-8")
     data["today"] = today
+    # 試合後は data/result.json（最終スコア）をトップの速報ボードに出す
+    res = ROOT / "data/result.json"
+    data["result"] = json.loads(res.read_text(encoding="utf-8")) if res.exists() else None
     tpl = (ROOT / "scripts/site_template.html").read_text(encoding="utf-8")
     out = tpl.replace("/*__DATA__*/null", json.dumps(data, ensure_ascii=False).replace("</", "<\\/"))
     (ROOT / "site").mkdir(exist_ok=True)
