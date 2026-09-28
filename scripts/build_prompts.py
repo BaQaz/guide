@@ -6,6 +6,7 @@
 仕様を変えたら作り直す。
 """
 import html
+import math
 import re
 from pathlib import Path
 
@@ -29,69 +30,119 @@ def attach(rel, body=None):
     return f"<<<ファイル {rel}>>>\n{body if body is not None else read(rel)}\n<<<ここまで>>>"
 
 
-BRANCH_NAMES = {2: "basics", 3: "play", 4: "numbers", 5: "today", 6: "cheer", 7: "mind", 8: "rest", 9: "fighters", 10: "stadium"}
-
-
-def write_rules(issue, what):
+def write_rules(issue, branch, pr_title, pr_ref, what):
     """GPT がリポジトリに直接書き込むための手順。長い出力がチャットで圧縮されないよう、1件ごとにコミットさせる。"""
-    branch = f"content/{issue}-{BRANCH_NAMES[issue]}"
     return f"""# 書き込みのしかた（厳守）
 あなたは GitHub のリポジトリ BaQaz/guide に書き込めます。チャットに本文を出すのではなく、リポジトリに直接コミットしてください。
 1. main から新しいブランチ `{branch}` を作る（すでにあれば、そのブランチに続けて書く）
 2. {what}
-3. 全部書き終えたら、`{branch}` から main へのプルリクエストを作る。タイトルは Issue #{issue} と同じ、本文の1行目に `Closes #{issue}`、続けて：書いたもの（記事IDまたは選手名）の一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+3. 全部書き終えたら、`{branch}` から main へのプルリクエストを作る。タイトルは「{pr_title}」、本文の1行目に `{pr_ref}`、続けて：書いたもの（記事IDまたは選手名）の一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
 4. チャットには、コミットしたファイルの一覧とPRのURLだけを短く返す（本文をチャットに貼らない）
 - 途中で止まったときは「どこまでコミットしたか」を書いて止まり、「続き」と送られたら次のファイルから再開する。同じファイルを二重に作らない
 - 書き込めなかったときは、エラーの内容をそのまま伝えて止まる（チャットに全文を貼る方式に切り替えない）"""
 
 
-def article_write_rules(issue):
-    return write_rules(issue, """記事は1つ書くごとに、1記事＝1ファイルで、すぐにコミットする（まとめて書いてから一度にコミットしない）
+def article_write_rules(j):
+    return write_rules(j["issue"], j["branch"], f"#{j['issue']} {j['title']}（{j['part']}）", f"Refs #{j['issue']}",
+                       f"""記事は1つ書くごとに、1記事＝1ファイルで、すぐにコミットする（まとめて書いてから一度にコミットしない）
+   - 書くのは「今回書く範囲」の {len(j['ids'])} 本だけ。ほかの ID のファイルは作らない（別のチャットが書いています）
    - パス：`content/<カテゴリ番号>/<ID>.md`（例：`content/1/1-07.md`、`content/1/1-07-a.md`）
    - 中身：テンプレートどおりの front matter（--- で囲む）と本文だけ。コードブロックや `=== FILE: … ===` の区切りは入れない
-   - コミットメッセージ：`<ID> <疑問の文> (#Issue番号)`""")
+   - コミットメッセージ：`<ID> <疑問の文> (#{j['issue']})`""")
 
 
 def players_write_rules():
-    return write_rules(9, """data/players/fighters.md を直接編集してコミットする。選手を1人（またはセクション1つ）書き足すごとにコミットする（全部書いてから一度にコミットしない）
+    return write_rules(9, "content/9-fighters", "#9 日本ハムの選手カード", "Closes #9", """data/players/fighters.md を直接編集してコミットする。選手を1人（またはセクション1つ）書き足すごとにコミットする（全部書いてから一度にコミットしない）
    - 毎回、ブランチ上の最新の fighters.md を読んでから追記する。既存の先発・スタメン部分は消さない
    - コミットメッセージ：`日本ハム <選手名またはセクション名> を追加 (#9)`""")
 
 
 COMMON_RULES = """# 守ること
-- 添付の「記事テンプレート」の型・字数・書き方ルールに必ず従う。読み手は野球をほぼ知らない大人で、球場の待ち時間にスマホで1〜2分で読む
+- 添付の「記事テンプレート」の型・字数・書き方ルール（とくに「口調」）に必ず従う。読み手は野球をほぼ知らない大人で、球場の待ち時間にスマホで1〜2分で読む
 - 「今日の試合で見るなら」は必須。添付の「今日の試合データ」「選手カード」にある具体的な選手名・場面で書く
 - 2026年の出来事はあなたの学習データより新しい場合がある。今日の試合・2026年シーズンの数字や出来事は、添付データにあるものか、ウェブ検索で NPB・球団公式・主要紙から確認できたものだけを使い、front matter の sources に URL を書く
 - 確認できない内容は書かない。確認が必要な記述が残る記事は needs_check: true にし、該当箇所に <!-- TODO: 確認 --> を残す
 - 🔍 がついた疑問は、球団公式などで確認できた内容だけを書く。推測で書かない
 - チケットの氏名・番号・座席の列や番号は書かない"""
 
-JOBS = [
-    dict(issue=2, title="カテゴリ1「野球ってそもそも？」の★", prio="最優先", cats="1", players=False,
-         scope="カテゴリ1のうち ★ がついた L1（1-01, 1-03, 1-04, 1-05, 1-06, 1-07, 1-08, 1-09）と、その下の L2 をすべて",
+# Issue ごとの範囲。記事が多い Issue は MAX_PER_CHAT 本ずつ（L1 とその L2 はまとめて）に分け、1チャット＝1パートにする。
+MAX_PER_CHAT = 10
+ISSUES = [
+    dict(issue=2, title="カテゴリ1「野球ってそもそも？」の★", prio="最優先", cats="1", players=False, slug="basics",
+         l1s="1-01 1-03 1-04 1-05 1-06 1-07 1-08 1-09",
          notes="- 1-01-d（延長戦）と 1-05-b（コールド）は🔍。2026年のNPBの規定を公式で確認できたときだけ書く\n- 1-01-c「今日は何時に終わりそう？」は 18:00 開始を前提に、平均的な試合時間を出典つきで"),
-    dict(issue=3, title="カテゴリ2「打つ・投げる・守る」の★", prio="最優先", cats="2", players=True,
-         scope="カテゴリ2のうち ★ がついた L1（2-02, 2-03, 2-07, 2-09, 2-10, 2-12）と、その下の L2 をすべて",
+    dict(issue=3, title="カテゴリ2「打つ・投げる・守る」の★", prio="最優先", cats="2", players=True, slug="play",
+         l1s="2-02 2-03 2-07 2-09 2-10 2-12",
          notes="- 2-03-b（海風とホームラン）は山口航輝・井上広大・清宮・万波を例に使える\n- 2-09 は今日の継投予想（ロッテのブルペン、福島蓮は短いイニングの予想）と結びつける"),
-    dict(issue=4, title="カテゴリ4「数字・記録・スコアボード」の★", prio="高", cats="4", players=True,
-         scope="カテゴリ4のうち ★ がついた L1（4-01, 4-02, 4-06）と、その下の L2 をすべて",
+    dict(issue=4, title="カテゴリ4「数字・記録・スコアボード」の★", prio="高", cats="4", players=True, slug="numbers",
+         l1s="4-01 4-02 4-06",
          notes="- 4-02（スタメン表の見方）は、添付の予想スタメン表を例に使う\n- 4-06-a（今日かかっている記録）は、今日の試合データの「今日かかっている記録・話題」だけを根拠にする"),
-    dict(issue=5, title="カテゴリ5「今日の試合」5-01〜5-07", prio="高", cats="5", players=True,
-         scope="カテゴリ5の 5-01〜5-07 の L1 と L2 すべて（5-08 は不要）",
+    dict(issue=5, title="カテゴリ5「今日の試合」5-01〜5-07", prio="高", cats="5", players=True, slug="today",
+         l1s="5-01 5-02 5-03 5-04 5-05 5-06 5-07",
          notes="- 順位・ゲーム差・予告先発・記録は、今日の試合データにある数字だけを使う\n- 5-01-c は🔍。CS の開催地の決まり方を NPB 公式で確認できたときだけ書く\n- 5-06 は選手カードから要約する（清宮・山口・ジャクソン）\n- 5-07 と 5-07-a〜d は短くてよい。「上の『スタメン』から選手カードが見られます」と案内する"),
-    dict(issue=10, title="カテゴリ7「ZOZOマリンスタジアム」", prio="高", cats="7", players=False,
-         scope="カテゴリ7（7-01〜7-12）の L1 と L2 すべて。★（7-04, 7-06, 7-07, 7-08, 7-09, 7-10, 7-11）を先に",
+    dict(issue=10, title="カテゴリ7「ZOZOマリンスタジアム」", prio="高", cats="7", players=False, slug="stadium",
+         l1s="7-04 7-06 7-07 7-08 7-09 7-10 7-11 7-01 7-02 7-03 7-05 7-12",
          notes="- 🔍が多い。イベント時刻・メニュー・持ち込み・再入場・傘・座席からの見え方・トイレは、マリーンズ球団公式・ZOZOマリンスタジアム公式で確認できたものだけを書く\n- 7-07 は 2026/9/28 当日のイベント。7-07-d の企画名は「2026 秋の夜空にみんなで叫ぼう！特別招待」\n- 7-11 の前提は 1塁側・内野指定席B・Cゲート（コアラゲート）・フロア4 まで。それ以上の座席情報は書かない\n- 7-08-a は天気予報「くもり時々雨」と夜の海風を踏まえる"),
-    dict(issue=6, title="カテゴリ6「応援」", prio="中", cats="6", players=False,
-         scope="カテゴリ6（6-01〜6-04）の L1 と L2 すべて",
+    dict(issue=6, title="カテゴリ6「応援」", prio="中", cats="6", players=False, slug="cheer",
+         l1s="6-01 6-02 6-03 6-04",
          notes="- 観戦席は1塁側（ロッテ側）の内野指定席B。6-01-a は内野席での応援への参加のしかたを中心に\n- 6-01-b（応援歌）と 6-04（マスコット）は🔍。歌詞の全文は載せない"),
-    dict(issue=7, title="カテゴリ3「選手の頭の中」", prio="中", cats="3", players=True,
-         scope="カテゴリ3（3-01〜3-08）の L1 と L2 すべて",
+    dict(issue=7, title="カテゴリ3「選手の頭の中」", prio="中", cats="3", players=True, slug="mind",
+         l1s="3-01 3-02 3-03 3-04 3-05 3-06 3-07 3-08",
          notes="- 「今日の試合で見るなら」では選手カードの具体例を使う（例：3-08 はサブロー・新庄の起用、3-06-a は藤原・万波）"),
-    dict(issue=8, title="カテゴリ2の残り・カテゴリ8", prio="低", cats="28", players=False,
-         scope="カテゴリ2のうち ★ がない L1（2-01, 2-04, 2-05, 2-06, 2-08, 2-11, 2-13〜2-18）とその L2、カテゴリ8（8-01, 8-02）とその L2",
+    dict(issue=8, title="カテゴリ1・2の残りとカテゴリ8", prio="低", cats="128", players=False, slug="rest",
+         l1s="1-02 2-01 2-04 2-05 2-06 2-08 2-11 2-13 2-14 2-15 2-16 2-17 2-18 8-01 8-02",
          notes="- 2-16-a と 8-02-a は🔍"),
 ]
+
+
+def parse_tree():
+    """question-tree.md から {L1のID: (題, [(L2のID, 題), …])} を作る。"""
+    tree, cur = {}, None
+    for line in read("docs/question-tree.md").splitlines():
+        m = re.match(r"^- \*\*(\d-\d\d) (.+?)\*\*(.*)$", line)
+        if m:
+            cur = m.group(1)
+            tree[cur] = ((m.group(2) + m.group(3)).strip(), [])
+            continue
+        m = re.match(r"^  - (\d-\d\d-[a-z]) (.+)$", line)
+        if m and cur:
+            tree[cur][1].append((m.group(1), m.group(2).strip()))
+    return tree
+
+
+def balanced(items, size, n):
+    """items を順番のまま n 個に分け、いちばん大きいパートができるだけ小さくなるようにする。"""
+    best = {}
+
+    def go(i, k):
+        if k == 1:
+            return sum(size[x] for x in items[i:]), [items[i:]]
+        if (i, k) not in best:
+            opts = []
+            for j in range(i + 1, len(items) - k + 2):
+                m, rest = go(j, k - 1)
+                opts.append((max(sum(size[x] for x in items[i:j]), m), [items[i:j]] + rest))
+            best[i, k] = min(opts, key=lambda o: o[0])
+        return best[i, k]
+
+    return go(0, min(n, len(items)))[1]
+
+
+def split_jobs():
+    tree, jobs = parse_tree(), []
+    for iss in ISSUES:
+        size = {l1: 1 + len(tree[l1][1]) for l1 in iss["l1s"].split()}
+        chunks = balanced(list(size), size, math.ceil(sum(size.values()) / MAX_PER_CHAT))
+        for k, l1s in enumerate(chunks, 1):
+            ids = [x for l1 in l1s for x in [l1] + [c for c, _ in tree[l1][1]]]
+            lines = [f"- {l1} {tree[l1][0]}" + "".join(f"\n  - {c} {t}" for c, t in tree[l1][1]) for l1 in l1s]
+            # Issue の注意点のうち、このパートの ID に触れる行（と ID を含まない行）だけ残す
+            notes = [n for n in iss["notes"].split("\n") if not re.search(r"\d-\d\d", n) or any(l1 in n for l1 in l1s)]
+            part = f"{k}/{len(chunks)}"
+            jobs.append(dict(iss, part=part, branch=f"content/{iss['issue']}-{iss['slug']}-{k}", ids=ids,
+                             scope=f"次の {len(ids)} 本（L1 とその下の L2）\n" + "\n".join(lines),
+                             notes="\n".join(notes) or "- 特になし"))
+    return jobs
 
 
 def article_prompt(j):
@@ -105,7 +156,7 @@ def article_prompt(j):
     return f"""あなたは、野球をほとんど知らない大人向けの観戦ガイドの記事を書くライターです。
 2026年9月28日（月）18:00 からの ZOZOマリンスタジアム「千葉ロッテ×北海道日本ハム」を観に行く人が、球場の待ち時間にスマホで読みます。
 
-# 今回書く範囲（GitHub Issue #{j['issue']}：{j['title']}）
+# 今回書く範囲（GitHub Issue #{j['issue']}：{j['title']}　パート {j['part']}）
 {j['scope']}
 
 # この範囲の注意点
@@ -113,7 +164,7 @@ def article_prompt(j):
 
 {COMMON_RULES}
 
-{article_write_rules(j['issue'])}
+{article_write_rules(j)}
 
 # 添付資料
 """ + "\n\n".join(files)
@@ -169,16 +220,17 @@ textarea{width:100%;height:220px;margin-top:6px;font:12px/1.5 ui-monospace,monos
 
 <h2>1. ChatGPT に送る</h2>
 <ol>
-<li>ChatGPT で<strong>新しいチャット</strong>を開く（1 Issue につき 1チャット）。モデルは考える系（Thinking）を選び、<strong>ウェブ検索</strong>と <strong>GitHub への書き込み</strong>（BaQaz/guide）を使える状態にする</li>
+<li>ChatGPT で<strong>新しいチャット</strong>を開く（<strong>1プロンプトにつき1チャット</strong>。全24本。パートごとにブランチが分かれているので、いくつ同時に進めてもぶつかりません）。モデルは考える系（Thinking）を選び、<strong>ウェブ検索</strong>と <strong>GitHub への書き込み</strong>（BaQaz/guide）を使える状態にする</li>
 <li>下の「コピー」を押して、そのまま貼って送る</li>
-<li>ChatGPT が Issue ごとのブランチ（例：<code>content/2-basics</code>）を作り、<strong>記事を1つ書くたびにコミット</strong>します。1件ずつ書き込むので、長い出力がチャットで省略・圧縮される心配がありません。本文をコピーして貼る作業はいりません</li>
+<li>ChatGPT が パートごとのブランチ（例：<code>content/2-basics-1</code>）を作り、<strong>記事を1つ書くたびにコミット</strong>します。1件ずつ書き込むので、長い出力がチャットで省略・圧縮される心配がありません。本文をコピーして貼る作業はいりません</li>
 <li>途中で止まったら「続き」と送る（コミット済みの次から再開します）。書き込みの確認を求められたら許可する</li>
 </ol>
 
 <h2>2. PR を確認してマージする（スマホのブラウザでも可）</h2>
 <ol>
-<li>書き終わると ChatGPT が PR を作り、URL を返します（<a href="REPO/pulls">PR の一覧</a>からも開けます）</li>
+<li>書き終わると ChatGPT がパートごとに PR を作り、URL を返します（<a href="REPO/pulls">PR の一覧</a>からも開けます）</li>
 <li>PR の中身をざっと見て（出典URLがあるか、needs_check の箇所）、「Merge pull request」。Claude にファクトチェックを頼む場合は、マージ前に PR の URL を渡す</li>
+<li>Issue のパートが全部マージされたら、その Issue を閉じる（記事のパートの PR は Issue を自動では閉じません）</li>
 </ol>
 <p class="small">急ぐときは、プロンプトを送るときに「ブランチは作らず main に直接コミットしてください。PR も不要です」と一言添えれば、書いたそばからサイトに反映されます（レビューなし）。</p>
 <p class="small">ChatGPT が書き込めなかったときだけ、手で入れます：<a href="REPO/new/main">Add file → Create new file</a> で <code>content/gpt/issue-番号.md</code> を作り、出力を貼る（<code>=== FILE: … ===</code> 区切りのまとめ書きも読めます）。</p>
@@ -214,7 +266,7 @@ document.querySelectorAll('button[data-copy]').forEach(b=>b.onclick=async()=>{
 
 
 def card(i, issue, title, prio, prompt):
-    return f"""<div class="card"><div class="row"><h3>#{issue} {html.escape(title)}</h3><span class="tag">{prio}</span>
+    return f"""<div class="card"><div class="row"><h3>{i + 1}. #{issue} {html.escape(title)}</h3><span class="tag">{prio}</span>
 <button data-copy="p{i}">コピー</button></div>
 <div class="small">{len(prompt):,} 文字 ・ <a href="{REPO}/issues/{issue}">Issue #{issue}</a></div>
 <details><summary>中身を見る</summary><textarea id="p{i}" readonly>{html.escape(prompt)}</textarea></details></div>"""
@@ -222,12 +274,15 @@ def card(i, issue, title, prio, prompt):
 
 def main():
     cards = []
-    order = JOBS[:4] + [None] + JOBS[4:]  # None = 選手カード（#9）
+    jobs = split_jobs()
+    k = max(i for i, j in enumerate(jobs) if j["issue"] == 5) + 1
+    order = jobs[:k] + [None] + jobs[k:]  # None = 選手カード（#9）。#5 の後に置く
     for i, j in enumerate(order):
         if j is None:
             cards.append(card(i, 9, "日本ハムの選手カード（候補・ブルペン・代打代走）", "高", players_prompt()))
         else:
-            cards.append(card(i, j["issue"], j["title"], j["prio"], article_prompt(j)))
+            head = f"{j['title']}（{j['part']}）{' '.join(x for x in j['ids'] if x.count('-') == 1)}"
+            cards.append(card(i, j["issue"], head, j["prio"], article_prompt(j)))
     out = PAGE.replace("REPO", REPO).replace("CARDS", "\n".join(cards))
     (ROOT / "docs/gpt-prompts.html").write_text(out, encoding="utf-8")
     print(f"docs/gpt-prompts.html: プロンプト {len(cards)} 件")
