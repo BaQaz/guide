@@ -243,7 +243,7 @@ function lineupCols(){
     if(useLive && L[key]) items = L[key].map(x=>({n:x.order??'', pos:x.pos||'', name:x.name||''}));
     else items = rows.map(r=>({n:r[0], pos:posOf(r[idx]), name:r[idx]}));
     const p = useLive && L.pitchers && L.pitchers[key] ? L.pitchers[key] : pcell;
-    return `<div class="team-col"><h4>${team}<small>${useLive?'発表':'予想'}</small></h4><ol>${items.map(x=>`<li><span class="n">${esc(x.n)}</span><span class="pos">${esc(x.pos)}</span><span>${pLink(x.name, useLive?team:'')}</span></li>`).join('')}
+    return `<div class="team-col"><h4>${team}<small>${useLive||D.lineup_announced?'発表':'予想'}</small></h4><ol>${items.map(x=>`<li><span class="n">${esc(x.n)}</span><span class="pos">${esc(x.pos)}</span><span>${pLink(x.name, useLive?team:'')}</span></li>`).join('')}
       <li class="p"><span class="n"></span><span class="pos">投</span><span>${p?pLink(p, useLive?team:''):''}</span></li></ol></div>`;
   };
   return `<div class="lineup">${col('日本ハム','fighters',3,pit[3])}${col('ロッテ','lotte',1,pit[1])}</div>`;
@@ -298,7 +298,7 @@ function article(id){
   $('#app').innerHTML = h;
 }
 function lineup(){
-  let h = `<a class="back" href="#/">← トップ</a><h1>スタメンと選手カード</h1><p class="lead">予想スタメンは試合前の発表で変わります。発表後は<a href="#/live">写真から更新</a>できます。</p>${lineupCols()}`;
+  let h = `<a class="back" href="#/">← トップ</a><h1>スタメンと選手カード</h1><p class="lead">${D.lineup_announced?'スタメンは試合前に発表されたものです（NPB公式）。試合中の交代は':'予想スタメンは試合前の発表で変わります。発表後は'}<a href="#/live">写真から更新</a>できます。</p>${lineupCols()}`;
   let last='';
   D.players.forEach((p,i)=>{ const g=p.team+'｜'+p.section; if(g!==last){h+=(last?'</div>':'')+`<p class="section-title">${esc(g)}</p><div class="qs">`;last=g}
     h+=`<a class="q" href="#/p/${i}">${esc(p.name)}<small>${esc(p.title.replace(p.name,'').replace(/^[（(]|[）)]$/g,''))}</small></a>` });

@@ -130,6 +130,8 @@ def load_players():
 def main():
     data = {"tree": parse_tree(), "articles": load_articles()}
     data["players"], data["lineup"] = load_players()
+    readme = ROOT / "data/players/README.md"
+    data["lineup_announced"] = readme.exists() and "## 発表スタメン" in readme.read_text(encoding="utf-8")
     today = (ROOT / "data/today.md").read_text(encoding="utf-8")
     data["today"] = today
     tpl = (ROOT / "scripts/site_template.html").read_text(encoding="utf-8")
