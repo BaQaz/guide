@@ -635,13 +635,14 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 
 # 対象
 - ブランチ名が `content/` で始まる open な PR すべて（番号の小さい順）
+- **PR がないまま残っている `content/` のブランチ**も対象。main にない commit があり、open な PR もないブランチを探し、そのブランチから main への PR を作ってから同じ条件でマージする（途中で止まった作業の取りこぼしを防ぐため）。名前に `backup` を含むブランチは除く
 
 # マージしてよい条件（すべて満たすもの）
-- 変更したファイルが次の範囲だけ：記事のブランチは `content/` の下の .md、`content/9-…` は `data/players/fighters.md`、`content/tree-…` は `docs/question-tree.md`、`content/players-…` は `data/players/detail/` の下の .md、`content/deco-…` は `content/` の下の .md
+- 変更したファイルが次の範囲だけ：記事のブランチは `content/` の下の .md、`content/9-…` は `data/players/fighters.md`、`content/tree-…` は `docs/question-tree.md`、`content/players-…` は `data/players/detail/` の下の .md、`content/deco-…` と `content/episode-…` は `content/` の下の .md
 - 記事ファイルの先頭に front matter（--- で囲む）があり、`id` がファイル名と同じ（記事のファイルだけ）
 - 本文に ``` のコードブロックや `=== FILE:` の区切りが入っていない
 - 画像（`![…](…)`）があれば、URL が `https://upload.wikimedia.org/` で始まり、出典が書いてある
-- main と衝突（conflict）していない
+- main と衝突（conflict）していない。衝突した記事は、main の版を土台にして、そのブランチで直そうとした見出しだけをブランチの版にして直してからマージする。衝突の印（&lt;&lt;&lt;&lt;&lt;&lt;&lt; ======= &gt;&gt;&gt;&gt;&gt;&gt;&gt;）を残したままコミットしない
 
 # やること
 1. 条件を満たす PR は、merge commit でマージする（squash や rebase ではなく）
