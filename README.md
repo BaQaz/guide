@@ -12,15 +12,15 @@ docs/
   handoff.md           Claude / GPT の分担と受け渡しルール
 data/
   today.md             今日の試合の前提情報（順位・先発・記録）
-  players/             選手・監督カード（7項目）
+  players/             選手・監督カード（7項目）。README.md に書式と予想スタメン
 content/
   1/ … 8/              記事本体（1問＝1ファイル、ID名）
-site/                  表示用のサイト（後で作成）
+site/                  表示用のサイト（Issue #10 で GPT が作成）
 ```
 
 ## 進め方
-1. `docs/question-tree.md` で疑問を確定する（今ここ）
-2. カテゴリごとに Issue を立て、GPT が記事を書いて PR を出す
+1. `docs/question-tree.md` で疑問を確定する（済）
+2. カテゴリごとに Issue を立て、GPT が記事を書いて PR を出す（今ここ。Issue #1〜#10）
 3. Claude がファクトチェックとレビューをしてマージする
 4. サイトを組んで公開し、スマホで開けるようにする
 
