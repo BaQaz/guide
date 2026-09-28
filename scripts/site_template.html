@@ -215,7 +215,8 @@ function lineScore(sc){
     row('日ハム',sc.fighters,'fighters')+row('ロッテ',sc.lotte,'lotte')+'</table></div>';
 }
 function board(){
-  const v = loadLive(), sc = v.score||{}, st = {B:0,S:0,O:0,bases:[0,0,0],...(sc.count||{}),...(v.state||{})};
+  const fin = D.result && D.result.final ? D.result : null;
+  const v = fin ? {score: fin.score} : loadLive(), sc = v.score||{}, st = {B:0,S:0,O:0,bases:[0,0,0],...(sc.count||{}),...(v.state||{})};
   if(sc.bases && !(v.state&&v.state.bases)) st.bases = sc.bases;
   const lamps = (k,n,cls)=>`<span>${k}</span><button data-k="${k}" aria-label="${k}を変更">${[...Array(n)].map((_,i)=>`<span class="lamp ${i<st[k]?cls:''}"></span>`).join('')}</button>`;
   const pre = !v.score;
@@ -226,7 +227,7 @@ function board(){
       <div class="lamps">${lamps('B',3,'b')}${lamps('S',2,'s')}${lamps('O',2,'o')}</div>
       <div class="bases">${[3,2,1].map(b=>`<button class="b${b} ${st.bases[b-1]?'on':''}" data-base="${b}" aria-label="${b}塁"></button>`).join('')}</div>
       <div class="who">${sc.pitcher?'投手 '+esc(sc.pitcher)+'　':''}${sc.batter?'打者 '+esc(sc.batter):''}
-        <div class="hint">ランプと塁はタップで変えられます ・ <a href="#/live">写真からスコアとスタメンを更新</a></div></div>
+        <div class="hint">${fin?`<a href="#/q/${esc(fin.article)}">試合の振り返りを読む</a>（出典：NPB公式）`:'ランプと塁はタップで変えられます ・ <a href="#/live">写真からスコアとスタメンを更新</a>'}</div></div>
     </div></div>`;
 }
 function bindBoard(){
@@ -265,7 +266,7 @@ function home(){
 function guide(key){
   const g = GUIDES[key]; if(!g) return home();
   let h = `<a class="back" href="#/">← トップ</a><h1>${esc(g.title)}</h1><p class="lead">${esc(g.desc)}</p>`;
-  if(key==='game') h += `<div class="qs" style="margin-bottom:8px"><a class="q" href="#/lineup">スタメンと選手カード<small>両チームと監督</small></a><a class="q" href="#/today">今日の試合データ<small>順位・予告先発・記録</small></a></div>`;
+  if(key==='game') h += `<div class="qs" style="margin-bottom:8px"><a class="q" href="#/lineup">スタメンと選手カード<small>両チームと監督</small></a><a class="q" href="#/today">今日の試合データ<small>${D.result&&D.result.final?'結果・順位・記録':'順位・予告先発・記録'}</small></a></div>`;
   D.tree.filter(c=>g.cats.includes(c.no)).forEach(c=>{
     h += `<p class="section-title">${esc(c.title)}</p><div class="qs">${c.items.map(qBtn).join('')}</div>`;
   });

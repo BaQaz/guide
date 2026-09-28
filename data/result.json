@@ -1,0 +1,16 @@
+{
+  "final": true,
+  "article": "5-14",
+  "score": {
+    "inning": "試合終了",
+    "fighters": [0, 0, 1, 0, 0, 0, 2, 5, 0],
+    "lotte": [0, 0, 0, 0, 0, 0, 0, 1, 2],
+    "R": {"fighters": 8, "lotte": 3},
+    "H": {"fighters": 9, "lotte": 6},
+    "E": {"fighters": 0, "lotte": 0},
+    "memo": "日本ハム 8-3 ロッテ｜勝 福島 負 ジャクソン｜本 郡司7号(満塁) 山口33号",
+    "count": {"B": 0, "S": 0, "O": 0},
+    "bases": [0, 0, 0]
+  },
+  "source": "https://npb.jp/scores/2026/0928/m-f-24/"
+}
