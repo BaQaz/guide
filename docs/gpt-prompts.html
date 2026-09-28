@@ -20,26 +20,24 @@ textarea{width:100%;height:220px;margin-top:6px;font:12px/1.5 ui-monospace,monos
 
 <h2>1. ChatGPT に送る</h2>
 <ol>
-<li>ChatGPT で<strong>新しいチャット</strong>を開く（1 Issue につき 1チャット）。モデルは考える系（Thinking）を選び、<strong>ウェブ検索をオン</strong>にする</li>
+<li>ChatGPT で<strong>新しいチャット</strong>を開く（1 Issue につき 1チャット）。モデルは考える系（Thinking）を選び、<strong>ウェブ検索</strong>と <strong>GitHub への書き込み</strong>（BaQaz/guide）を使える状態にする</li>
 <li>下の「コピー」を押して、そのまま貼って送る</li>
-<li>途中で止まったら「続き」と送る。全部出たら、コードブロック右上の「コピー」で中身をコピーする（続きがある場合は全部つなげて1つにする）</li>
+<li>ChatGPT が Issue ごとのブランチ（例：<code>content/2-basics</code>）を作り、<strong>記事を1つ書くたびにコミット</strong>します。1件ずつ書き込むので、長い出力がチャットで省略・圧縮される心配がありません。本文をコピーして貼る作業はいりません</li>
+<li>途中で止まったら「続き」と送る（コミット済みの次から再開します）。書き込みの確認を求められたら許可する</li>
 </ol>
 
-<h2>2. GitHub に入れる（スマホのブラウザでも可）</h2>
-<p><strong>記事（#2〜#8, #10）の場合</strong></p>
+<h2>2. PR を確認してマージする（スマホのブラウザでも可）</h2>
 <ol>
-<li><a href="https://github.com/BaQaz/guide/new/main">GitHub の「Add file → Create new file」</a>を開く</li>
-<li>ファイル名に <code>content/gpt/issue-番号.md</code>（例：<code>content/gpt/issue-2.md</code>）と入力し、本文にコピーした内容を貼る。<code>=== FILE: … ===</code> の区切りはそのままで大丈夫です（サイトを組み立てるスクリプトが自動で1記事ずつに分けます）</li>
-<li>右上の「Commit changes…」→「<strong>Create a new branch</strong>」を選び、メッセージに <code>Closes #番号</code> と書いて「Propose changes」→「Create pull request」</li>
-<li>PR の中身をざっと見て（出典URLがあるか、needs_check の箇所）、「Merge pull request」</li>
+<li>書き終わると ChatGPT が PR を作り、URL を返します（<a href="https://github.com/BaQaz/guide/pulls">PR の一覧</a>からも開けます）</li>
+<li>PR の中身をざっと見て（出典URLがあるか、needs_check の箇所）、「Merge pull request」。Claude にファクトチェックを頼む場合は、マージ前に PR の URL を渡す</li>
 </ol>
-<p><strong>選手カード（#9）の場合</strong>：<a href="https://github.com/BaQaz/guide/edit/main/data/players/fighters.md">data/players/fighters.md の編集画面</a>を開き、全部を選択して ChatGPT の出力で置き換え、同じく新しいブランチ → PR → マージ。</p>
-<p class="small">急ぐときは「Commit directly to the main branch」でもかまいません（レビューなしで反映されます）。</p>
+<p class="small">急ぐときは、プロンプトを送るときに「ブランチは作らず main に直接コミットしてください。PR も不要です」と一言添えれば、書いたそばからサイトに反映されます（レビューなし）。</p>
+<p class="small">ChatGPT が書き込めなかったときだけ、手で入れます：<a href="https://github.com/BaQaz/guide/new/main">Add file → Create new file</a> で <code>content/gpt/issue-番号.md</code> を作り、出力を貼る（<code>=== FILE: … ===</code> 区切りのまとめ書きも読めます）。</p>
 
 <h2>3. プロンプト（優先順）</h2>
 <div class="card"><div class="row"><h3>#2 カテゴリ1「野球ってそもそも？」の★</h3><span class="tag">最優先</span>
 <button data-copy="p0">コピー</button></div>
-<div class="small">4,595 文字 ・ <a href="https://github.com/BaQaz/guide/issues/2">Issue #2</a></div>
+<div class="small">4,972 文字 ・ <a href="https://github.com/BaQaz/guide/issues/2">Issue #2</a></div>
 <details><summary>中身を見る</summary><textarea id="p0" readonly>あなたは、野球をほとんど知らない大人向けの観戦ガイドの記事を書くライターです。
 2026年9月28日（月）18:00 からの ZOZOマリンスタジアム「千葉ロッテ×北海道日本ハム」を観に行く人が、球場の待ち時間にスマホで読みます。
 
@@ -58,13 +56,17 @@ textarea{width:100%;height:220px;margin-top:6px;font:12px/1.5 ui-monospace,monos
 - 🔍 がついた疑問は、球団公式などで確認できた内容だけを書く。推測で書かない
 - チケットの氏名・番号・座席の列や番号は書かない
 
-# 出力のしかた（厳守）
-- 書いた記事を全部、1つのコードブロック（```markdown）にまとめて出してください
-- 記事と記事の間は、次の区切り行を1行だけ入れてください（パスは記事ごとに変える）
-  === FILE: content/&lt;カテゴリ番号&gt;/&lt;ID&gt;.md ===
-- 区切り行の次の行から、テンプレートどおりの front matter（--- で囲む）と本文を書いてください
-- 長くて1回で出し切れないときは、キリのいい記事で止めて「続きは『続き』と送ってください」と書いてください。続きも同じ形式の新しいコードブロックで出してください
-- 最後に、コードブロックの外に次の3つを箇条書きで書いてください：書いたIDの一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+# 書き込みのしかた（厳守）
+あなたは GitHub のリポジトリ BaQaz/guide に書き込めます。チャットに本文を出すのではなく、リポジトリに直接コミットしてください。
+1. main から新しいブランチ `content/2-basics` を作る（すでにあれば、そのブランチに続けて書く）
+2. 記事は1つ書くごとに、1記事＝1ファイルで、すぐにコミットする（まとめて書いてから一度にコミットしない）
+   - パス：`content/&lt;カテゴリ番号&gt;/&lt;ID&gt;.md`（例：`content/1/1-07.md`、`content/1/1-07-a.md`）
+   - 中身：テンプレートどおりの front matter（--- で囲む）と本文だけ。コードブロックや `=== FILE: … ===` の区切りは入れない
+   - コミットメッセージ：`&lt;ID&gt; &lt;疑問の文&gt; (#Issue番号)`
+3. 全部書き終えたら、`content/2-basics` から main へのプルリクエストを作る。タイトルは Issue #2 と同じ、本文の1行目に `Closes #2`、続けて：書いたもの（記事IDまたは選手名）の一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+4. チャットには、コミットしたファイルの一覧とPRのURLだけを短く返す（本文をチャットに貼らない）
+- 途中で止まったときは「どこまでコミットしたか」を書いて止まり、「続き」と送られたら次のファイルから再開する。同じファイルを二重に作らない
+- 書き込めなかったときは、エラーの内容をそのまま伝えて止まる（チャットに全文を貼る方式に切り替えない）
 
 # 添付資料
 &lt;&lt;&lt;ファイル docs/content-template.md&gt;&gt;&gt;
@@ -200,7 +202,7 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 &lt;&lt;&lt;ここまで&gt;&gt;&gt;</textarea></details></div>
 <div class="card"><div class="row"><h3>#3 カテゴリ2「打つ・投げる・守る」の★</h3><span class="tag">最優先</span>
 <button data-copy="p1">コピー</button></div>
-<div class="small">6,978 文字 ・ <a href="https://github.com/BaQaz/guide/issues/3">Issue #3</a></div>
+<div class="small">7,351 文字 ・ <a href="https://github.com/BaQaz/guide/issues/3">Issue #3</a></div>
 <details><summary>中身を見る</summary><textarea id="p1" readonly>あなたは、野球をほとんど知らない大人向けの観戦ガイドの記事を書くライターです。
 2026年9月28日（月）18:00 からの ZOZOマリンスタジアム「千葉ロッテ×北海道日本ハム」を観に行く人が、球場の待ち時間にスマホで読みます。
 
@@ -219,13 +221,17 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 - 🔍 がついた疑問は、球団公式などで確認できた内容だけを書く。推測で書かない
 - チケットの氏名・番号・座席の列や番号は書かない
 
-# 出力のしかた（厳守）
-- 書いた記事を全部、1つのコードブロック（```markdown）にまとめて出してください
-- 記事と記事の間は、次の区切り行を1行だけ入れてください（パスは記事ごとに変える）
-  === FILE: content/&lt;カテゴリ番号&gt;/&lt;ID&gt;.md ===
-- 区切り行の次の行から、テンプレートどおりの front matter（--- で囲む）と本文を書いてください
-- 長くて1回で出し切れないときは、キリのいい記事で止めて「続きは『続き』と送ってください」と書いてください。続きも同じ形式の新しいコードブロックで出してください
-- 最後に、コードブロックの外に次の3つを箇条書きで書いてください：書いたIDの一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+# 書き込みのしかた（厳守）
+あなたは GitHub のリポジトリ BaQaz/guide に書き込めます。チャットに本文を出すのではなく、リポジトリに直接コミットしてください。
+1. main から新しいブランチ `content/3-play` を作る（すでにあれば、そのブランチに続けて書く）
+2. 記事は1つ書くごとに、1記事＝1ファイルで、すぐにコミットする（まとめて書いてから一度にコミットしない）
+   - パス：`content/&lt;カテゴリ番号&gt;/&lt;ID&gt;.md`（例：`content/1/1-07.md`、`content/1/1-07-a.md`）
+   - 中身：テンプレートどおりの front matter（--- で囲む）と本文だけ。コードブロックや `=== FILE: … ===` の区切りは入れない
+   - コミットメッセージ：`&lt;ID&gt; &lt;疑問の文&gt; (#Issue番号)`
+3. 全部書き終えたら、`content/3-play` から main へのプルリクエストを作る。タイトルは Issue #3 と同じ、本文の1行目に `Closes #3`、続けて：書いたもの（記事IDまたは選手名）の一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+4. チャットには、コミットしたファイルの一覧とPRのURLだけを短く返す（本文をチャットに貼らない）
+- 途中で止まったときは「どこまでコミットしたか」を書いて止まり、「続き」と送られたら次のファイルから再開する。同じファイルを二重に作らない
+- 書き込めなかったときは、エラーの内容をそのまま伝えて止まる（チャットに全文を貼る方式に切り替えない）
 
 # 添付資料
 &lt;&lt;&lt;ファイル docs/content-template.md&gt;&gt;&gt;
@@ -444,7 +450,7 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 &lt;&lt;&lt;ここまで&gt;&gt;&gt;</textarea></details></div>
 <div class="card"><div class="row"><h3>#4 カテゴリ4「数字・記録・スコアボード」の★</h3><span class="tag">高</span>
 <button data-copy="p2">コピー</button></div>
-<div class="small">5,868 文字 ・ <a href="https://github.com/BaQaz/guide/issues/4">Issue #4</a></div>
+<div class="small">6,247 文字 ・ <a href="https://github.com/BaQaz/guide/issues/4">Issue #4</a></div>
 <details><summary>中身を見る</summary><textarea id="p2" readonly>あなたは、野球をほとんど知らない大人向けの観戦ガイドの記事を書くライターです。
 2026年9月28日（月）18:00 からの ZOZOマリンスタジアム「千葉ロッテ×北海道日本ハム」を観に行く人が、球場の待ち時間にスマホで読みます。
 
@@ -463,13 +469,17 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 - 🔍 がついた疑問は、球団公式などで確認できた内容だけを書く。推測で書かない
 - チケットの氏名・番号・座席の列や番号は書かない
 
-# 出力のしかた（厳守）
-- 書いた記事を全部、1つのコードブロック（```markdown）にまとめて出してください
-- 記事と記事の間は、次の区切り行を1行だけ入れてください（パスは記事ごとに変える）
-  === FILE: content/&lt;カテゴリ番号&gt;/&lt;ID&gt;.md ===
-- 区切り行の次の行から、テンプレートどおりの front matter（--- で囲む）と本文を書いてください
-- 長くて1回で出し切れないときは、キリのいい記事で止めて「続きは『続き』と送ってください」と書いてください。続きも同じ形式の新しいコードブロックで出してください
-- 最後に、コードブロックの外に次の3つを箇条書きで書いてください：書いたIDの一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+# 書き込みのしかた（厳守）
+あなたは GitHub のリポジトリ BaQaz/guide に書き込めます。チャットに本文を出すのではなく、リポジトリに直接コミットしてください。
+1. main から新しいブランチ `content/4-numbers` を作る（すでにあれば、そのブランチに続けて書く）
+2. 記事は1つ書くごとに、1記事＝1ファイルで、すぐにコミットする（まとめて書いてから一度にコミットしない）
+   - パス：`content/&lt;カテゴリ番号&gt;/&lt;ID&gt;.md`（例：`content/1/1-07.md`、`content/1/1-07-a.md`）
+   - 中身：テンプレートどおりの front matter（--- で囲む）と本文だけ。コードブロックや `=== FILE: … ===` の区切りは入れない
+   - コミットメッセージ：`&lt;ID&gt; &lt;疑問の文&gt; (#Issue番号)`
+3. 全部書き終えたら、`content/4-numbers` から main へのプルリクエストを作る。タイトルは Issue #4 と同じ、本文の1行目に `Closes #4`、続けて：書いたもの（記事IDまたは選手名）の一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+4. チャットには、コミットしたファイルの一覧とPRのURLだけを短く返す（本文をチャットに貼らない）
+- 途中で止まったときは「どこまでコミットしたか」を書いて止まり、「続き」と送られたら次のファイルから再開する。同じファイルを二重に作らない
+- 書き込めなかったときは、エラーの内容をそのまま伝えて止まる（チャットに全文を貼る方式に切り替えない）
 
 # 添付資料
 &lt;&lt;&lt;ファイル docs/content-template.md&gt;&gt;&gt;
@@ -644,7 +654,7 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 &lt;&lt;&lt;ここまで&gt;&gt;&gt;</textarea></details></div>
 <div class="card"><div class="row"><h3>#5 カテゴリ5「今日の試合」5-01〜5-07</h3><span class="tag">高</span>
 <button data-copy="p3">コピー</button></div>
-<div class="small">24,785 文字 ・ <a href="https://github.com/BaQaz/guide/issues/5">Issue #5</a></div>
+<div class="small">25,160 文字 ・ <a href="https://github.com/BaQaz/guide/issues/5">Issue #5</a></div>
 <details><summary>中身を見る</summary><textarea id="p3" readonly>あなたは、野球をほとんど知らない大人向けの観戦ガイドの記事を書くライターです。
 2026年9月28日（月）18:00 からの ZOZOマリンスタジアム「千葉ロッテ×北海道日本ハム」を観に行く人が、球場の待ち時間にスマホで読みます。
 
@@ -665,13 +675,17 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 - 🔍 がついた疑問は、球団公式などで確認できた内容だけを書く。推測で書かない
 - チケットの氏名・番号・座席の列や番号は書かない
 
-# 出力のしかた（厳守）
-- 書いた記事を全部、1つのコードブロック（```markdown）にまとめて出してください
-- 記事と記事の間は、次の区切り行を1行だけ入れてください（パスは記事ごとに変える）
-  === FILE: content/&lt;カテゴリ番号&gt;/&lt;ID&gt;.md ===
-- 区切り行の次の行から、テンプレートどおりの front matter（--- で囲む）と本文を書いてください
-- 長くて1回で出し切れないときは、キリのいい記事で止めて「続きは『続き』と送ってください」と書いてください。続きも同じ形式の新しいコードブロックで出してください
-- 最後に、コードブロックの外に次の3つを箇条書きで書いてください：書いたIDの一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+# 書き込みのしかた（厳守）
+あなたは GitHub のリポジトリ BaQaz/guide に書き込めます。チャットに本文を出すのではなく、リポジトリに直接コミットしてください。
+1. main から新しいブランチ `content/5-today` を作る（すでにあれば、そのブランチに続けて書く）
+2. 記事は1つ書くごとに、1記事＝1ファイルで、すぐにコミットする（まとめて書いてから一度にコミットしない）
+   - パス：`content/&lt;カテゴリ番号&gt;/&lt;ID&gt;.md`（例：`content/1/1-07.md`、`content/1/1-07-a.md`）
+   - 中身：テンプレートどおりの front matter（--- で囲む）と本文だけ。コードブロックや `=== FILE: … ===` の区切りは入れない
+   - コミットメッセージ：`&lt;ID&gt; &lt;疑問の文&gt; (#Issue番号)`
+3. 全部書き終えたら、`content/5-today` から main へのプルリクエストを作る。タイトルは Issue #5 と同じ、本文の1行目に `Closes #5`、続けて：書いたもの（記事IDまたは選手名）の一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+4. チャットには、コミットしたファイルの一覧とPRのURLだけを短く返す（本文をチャットに貼らない）
+- 途中で止まったときは「どこまでコミットしたか」を書いて止まり、「続き」と送られたら次のファイルから再開する。同じファイルを二重に作らない
+- 書き込めなかったときは、エラーの内容をそのまま伝えて止まる（チャットに全文を貼る方式に切り替えない）
 
 # 添付資料
 &lt;&lt;&lt;ファイル docs/content-template.md&gt;&gt;&gt;
@@ -1260,7 +1274,7 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 &lt;&lt;&lt;ここまで&gt;&gt;&gt;</textarea></details></div>
 <div class="card"><div class="row"><h3>#9 日本ハムの選手カード（候補・ブルペン・代打代走）</h3><span class="tag">高</span>
 <button data-copy="p4">コピー</button></div>
-<div class="small">20,853 文字 ・ <a href="https://github.com/BaQaz/guide/issues/9">Issue #9</a></div>
+<div class="small">21,329 文字 ・ <a href="https://github.com/BaQaz/guide/issues/9">Issue #9</a></div>
 <details><summary>中身を見る</summary><textarea id="p4" readonly>あなたは、プロ野球の観戦用選手名鑑の編集者です。2026年9月28日（月）18:00 の「千葉ロッテ×北海道日本ハム」（ZOZOマリン）向けの名鑑を仕上げます。
 
 # 今回やること（GitHub Issue #9）
@@ -1276,10 +1290,16 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 - 2026年の出来事はあなたの学習データより新しい場合がある。数字・出来事はウェブ検索で NPB・球団公式・主要紙から確認できたものだけ
 - 確認できない記述は書かず、&lt;!-- TODO: 確認 --&gt; を残す
 
-# 出力のしかた（厳守）
-- 完成した data/players/fighters.md の全文を、1つのコードブロック（```markdown）で出してください（既存の先発・スタメン部分もそのまま含める）
-- 長くて1回で出し切れないときは、キリのいい選手で止めて「続きは『続き』と送ってください」と書いてください
-- 最後に、コードブロックの外に：追加した選手の一覧／残した TODO／使った出典URL の一覧
+# 書き込みのしかた（厳守）
+あなたは GitHub のリポジトリ BaQaz/guide に書き込めます。チャットに本文を出すのではなく、リポジトリに直接コミットしてください。
+1. main から新しいブランチ `content/9-fighters` を作る（すでにあれば、そのブランチに続けて書く）
+2. data/players/fighters.md を直接編集してコミットする。選手を1人（またはセクション1つ）書き足すごとにコミットする（全部書いてから一度にコミットしない）
+   - 毎回、ブランチ上の最新の fighters.md を読んでから追記する。既存の先発・スタメン部分は消さない
+   - コミットメッセージ：`日本ハム &lt;選手名またはセクション名&gt; を追加 (#9)`
+3. 全部書き終えたら、`content/9-fighters` から main へのプルリクエストを作る。タイトルは Issue #9 と同じ、本文の1行目に `Closes #9`、続けて：書いたもの（記事IDまたは選手名）の一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+4. チャットには、コミットしたファイルの一覧とPRのURLだけを短く返す（本文をチャットに貼らない）
+- 途中で止まったときは「どこまでコミットしたか」を書いて止まり、「続き」と送られたら次のファイルから再開する。同じファイルを二重に作らない
+- 書き込めなかったときは、エラーの内容をそのまま伝えて止まる（チャットに全文を貼る方式に切り替えない）
 
 # 添付資料
 &lt;&lt;&lt;ファイル data/players/README.md&gt;&gt;&gt;
@@ -1759,7 +1779,7 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 &lt;&lt;&lt;ここまで&gt;&gt;&gt;</textarea></details></div>
 <div class="card"><div class="row"><h3>#10 カテゴリ7「ZOZOマリンスタジアム」</h3><span class="tag">高</span>
 <button data-copy="p5">コピー</button></div>
-<div class="small">4,688 文字 ・ <a href="https://github.com/BaQaz/guide/issues/10">Issue #10</a></div>
+<div class="small">5,071 文字 ・ <a href="https://github.com/BaQaz/guide/issues/10">Issue #10</a></div>
 <details><summary>中身を見る</summary><textarea id="p5" readonly>あなたは、野球をほとんど知らない大人向けの観戦ガイドの記事を書くライターです。
 2026年9月28日（月）18:00 からの ZOZOマリンスタジアム「千葉ロッテ×北海道日本ハム」を観に行く人が、球場の待ち時間にスマホで読みます。
 
@@ -1780,13 +1800,17 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 - 🔍 がついた疑問は、球団公式などで確認できた内容だけを書く。推測で書かない
 - チケットの氏名・番号・座席の列や番号は書かない
 
-# 出力のしかた（厳守）
-- 書いた記事を全部、1つのコードブロック（```markdown）にまとめて出してください
-- 記事と記事の間は、次の区切り行を1行だけ入れてください（パスは記事ごとに変える）
-  === FILE: content/&lt;カテゴリ番号&gt;/&lt;ID&gt;.md ===
-- 区切り行の次の行から、テンプレートどおりの front matter（--- で囲む）と本文を書いてください
-- 長くて1回で出し切れないときは、キリのいい記事で止めて「続きは『続き』と送ってください」と書いてください。続きも同じ形式の新しいコードブロックで出してください
-- 最後に、コードブロックの外に次の3つを箇条書きで書いてください：書いたIDの一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+# 書き込みのしかた（厳守）
+あなたは GitHub のリポジトリ BaQaz/guide に書き込めます。チャットに本文を出すのではなく、リポジトリに直接コミットしてください。
+1. main から新しいブランチ `content/10-stadium` を作る（すでにあれば、そのブランチに続けて書く）
+2. 記事は1つ書くごとに、1記事＝1ファイルで、すぐにコミットする（まとめて書いてから一度にコミットしない）
+   - パス：`content/&lt;カテゴリ番号&gt;/&lt;ID&gt;.md`（例：`content/1/1-07.md`、`content/1/1-07-a.md`）
+   - 中身：テンプレートどおりの front matter（--- で囲む）と本文だけ。コードブロックや `=== FILE: … ===` の区切りは入れない
+   - コミットメッセージ：`&lt;ID&gt; &lt;疑問の文&gt; (#Issue番号)`
+3. 全部書き終えたら、`content/10-stadium` から main へのプルリクエストを作る。タイトルは Issue #10 と同じ、本文の1行目に `Closes #10`、続けて：書いたもの（記事IDまたは選手名）の一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+4. チャットには、コミットしたファイルの一覧とPRのURLだけを短く返す（本文をチャットに貼らない）
+- 途中で止まったときは「どこまでコミットしたか」を書いて止まり、「続き」と送られたら次のファイルから再開する。同じファイルを二重に作らない
+- 書き込めなかったときは、エラーの内容をそのまま伝えて止まる（チャットに全文を貼る方式に切り替えない）
 
 # 添付資料
 &lt;&lt;&lt;ファイル docs/content-template.md&gt;&gt;&gt;
@@ -1920,7 +1944,7 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 &lt;&lt;&lt;ここまで&gt;&gt;&gt;</textarea></details></div>
 <div class="card"><div class="row"><h3>#6 カテゴリ6「応援」</h3><span class="tag">中</span>
 <button data-copy="p6">コピー</button></div>
-<div class="small">3,717 文字 ・ <a href="https://github.com/BaQaz/guide/issues/6">Issue #6</a></div>
+<div class="small">4,092 文字 ・ <a href="https://github.com/BaQaz/guide/issues/6">Issue #6</a></div>
 <details><summary>中身を見る</summary><textarea id="p6" readonly>あなたは、野球をほとんど知らない大人向けの観戦ガイドの記事を書くライターです。
 2026年9月28日（月）18:00 からの ZOZOマリンスタジアム「千葉ロッテ×北海道日本ハム」を観に行く人が、球場の待ち時間にスマホで読みます。
 
@@ -1939,13 +1963,17 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 - 🔍 がついた疑問は、球団公式などで確認できた内容だけを書く。推測で書かない
 - チケットの氏名・番号・座席の列や番号は書かない
 
-# 出力のしかた（厳守）
-- 書いた記事を全部、1つのコードブロック（```markdown）にまとめて出してください
-- 記事と記事の間は、次の区切り行を1行だけ入れてください（パスは記事ごとに変える）
-  === FILE: content/&lt;カテゴリ番号&gt;/&lt;ID&gt;.md ===
-- 区切り行の次の行から、テンプレートどおりの front matter（--- で囲む）と本文を書いてください
-- 長くて1回で出し切れないときは、キリのいい記事で止めて「続きは『続き』と送ってください」と書いてください。続きも同じ形式の新しいコードブロックで出してください
-- 最後に、コードブロックの外に次の3つを箇条書きで書いてください：書いたIDの一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+# 書き込みのしかた（厳守）
+あなたは GitHub のリポジトリ BaQaz/guide に書き込めます。チャットに本文を出すのではなく、リポジトリに直接コミットしてください。
+1. main から新しいブランチ `content/6-cheer` を作る（すでにあれば、そのブランチに続けて書く）
+2. 記事は1つ書くごとに、1記事＝1ファイルで、すぐにコミットする（まとめて書いてから一度にコミットしない）
+   - パス：`content/&lt;カテゴリ番号&gt;/&lt;ID&gt;.md`（例：`content/1/1-07.md`、`content/1/1-07-a.md`）
+   - 中身：テンプレートどおりの front matter（--- で囲む）と本文だけ。コードブロックや `=== FILE: … ===` の区切りは入れない
+   - コミットメッセージ：`&lt;ID&gt; &lt;疑問の文&gt; (#Issue番号)`
+3. 全部書き終えたら、`content/6-cheer` から main へのプルリクエストを作る。タイトルは Issue #6 と同じ、本文の1行目に `Closes #6`、続けて：書いたもの（記事IDまたは選手名）の一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+4. チャットには、コミットしたファイルの一覧とPRのURLだけを短く返す（本文をチャットに貼らない）
+- 途中で止まったときは「どこまでコミットしたか」を書いて止まり、「続き」と送られたら次のファイルから再開する。同じファイルを二重に作らない
+- 書き込めなかったときは、エラーの内容をそのまま伝えて止まる（チャットに全文を貼る方式に切り替えない）
 
 # 添付資料
 &lt;&lt;&lt;ファイル docs/content-template.md&gt;&gt;&gt;
@@ -2051,7 +2079,7 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 &lt;&lt;&lt;ここまで&gt;&gt;&gt;</textarea></details></div>
 <div class="card"><div class="row"><h3>#7 カテゴリ3「選手の頭の中」</h3><span class="tag">中</span>
 <button data-copy="p7">コピー</button></div>
-<div class="small">5,918 文字 ・ <a href="https://github.com/BaQaz/guide/issues/7">Issue #7</a></div>
+<div class="small">6,291 文字 ・ <a href="https://github.com/BaQaz/guide/issues/7">Issue #7</a></div>
 <details><summary>中身を見る</summary><textarea id="p7" readonly>あなたは、野球をほとんど知らない大人向けの観戦ガイドの記事を書くライターです。
 2026年9月28日（月）18:00 からの ZOZOマリンスタジアム「千葉ロッテ×北海道日本ハム」を観に行く人が、球場の待ち時間にスマホで読みます。
 
@@ -2069,13 +2097,17 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 - 🔍 がついた疑問は、球団公式などで確認できた内容だけを書く。推測で書かない
 - チケットの氏名・番号・座席の列や番号は書かない
 
-# 出力のしかた（厳守）
-- 書いた記事を全部、1つのコードブロック（```markdown）にまとめて出してください
-- 記事と記事の間は、次の区切り行を1行だけ入れてください（パスは記事ごとに変える）
-  === FILE: content/&lt;カテゴリ番号&gt;/&lt;ID&gt;.md ===
-- 区切り行の次の行から、テンプレートどおりの front matter（--- で囲む）と本文を書いてください
-- 長くて1回で出し切れないときは、キリのいい記事で止めて「続きは『続き』と送ってください」と書いてください。続きも同じ形式の新しいコードブロックで出してください
-- 最後に、コードブロックの外に次の3つを箇条書きで書いてください：書いたIDの一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+# 書き込みのしかた（厳守）
+あなたは GitHub のリポジトリ BaQaz/guide に書き込めます。チャットに本文を出すのではなく、リポジトリに直接コミットしてください。
+1. main から新しいブランチ `content/7-mind` を作る（すでにあれば、そのブランチに続けて書く）
+2. 記事は1つ書くごとに、1記事＝1ファイルで、すぐにコミットする（まとめて書いてから一度にコミットしない）
+   - パス：`content/&lt;カテゴリ番号&gt;/&lt;ID&gt;.md`（例：`content/1/1-07.md`、`content/1/1-07-a.md`）
+   - 中身：テンプレートどおりの front matter（--- で囲む）と本文だけ。コードブロックや `=== FILE: … ===` の区切りは入れない
+   - コミットメッセージ：`&lt;ID&gt; &lt;疑問の文&gt; (#Issue番号)`
+3. 全部書き終えたら、`content/7-mind` から main へのプルリクエストを作る。タイトルは Issue #7 と同じ、本文の1行目に `Closes #7`、続けて：書いたもの（記事IDまたは選手名）の一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+4. チャットには、コミットしたファイルの一覧とPRのURLだけを短く返す（本文をチャットに貼らない）
+- 途中で止まったときは「どこまでコミットしたか」を書いて止まり、「続き」と送られたら次のファイルから再開する。同じファイルを二重に作らない
+- 書き込めなかったときは、エラーの内容をそのまま伝えて止まる（チャットに全文を貼る方式に切り替えない）
 
 # 添付資料
 &lt;&lt;&lt;ファイル docs/content-template.md&gt;&gt;&gt;
@@ -2256,7 +2288,7 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 &lt;&lt;&lt;ここまで&gt;&gt;&gt;</textarea></details></div>
 <div class="card"><div class="row"><h3>#8 カテゴリ2の残り・カテゴリ8</h3><span class="tag">低</span>
 <button data-copy="p8">コピー</button></div>
-<div class="small">5,140 文字 ・ <a href="https://github.com/BaQaz/guide/issues/8">Issue #8</a></div>
+<div class="small">5,513 文字 ・ <a href="https://github.com/BaQaz/guide/issues/8">Issue #8</a></div>
 <details><summary>中身を見る</summary><textarea id="p8" readonly>あなたは、野球をほとんど知らない大人向けの観戦ガイドの記事を書くライターです。
 2026年9月28日（月）18:00 からの ZOZOマリンスタジアム「千葉ロッテ×北海道日本ハム」を観に行く人が、球場の待ち時間にスマホで読みます。
 
@@ -2274,13 +2306,17 @@ sources:               # 数字や固有の事実を取った公式ページ・�
 - 🔍 がついた疑問は、球団公式などで確認できた内容だけを書く。推測で書かない
 - チケットの氏名・番号・座席の列や番号は書かない
 
-# 出力のしかた（厳守）
-- 書いた記事を全部、1つのコードブロック（```markdown）にまとめて出してください
-- 記事と記事の間は、次の区切り行を1行だけ入れてください（パスは記事ごとに変える）
-  === FILE: content/&lt;カテゴリ番号&gt;/&lt;ID&gt;.md ===
-- 区切り行の次の行から、テンプレートどおりの front matter（--- で囲む）と本文を書いてください
-- 長くて1回で出し切れないときは、キリのいい記事で止めて「続きは『続き』と送ってください」と書いてください。続きも同じ形式の新しいコードブロックで出してください
-- 最後に、コードブロックの外に次の3つを箇条書きで書いてください：書いたIDの一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+# 書き込みのしかた（厳守）
+あなたは GitHub のリポジトリ BaQaz/guide に書き込めます。チャットに本文を出すのではなく、リポジトリに直接コミットしてください。
+1. main から新しいブランチ `content/8-rest` を作る（すでにあれば、そのブランチに続けて書く）
+2. 記事は1つ書くごとに、1記事＝1ファイルで、すぐにコミットする（まとめて書いてから一度にコミットしない）
+   - パス：`content/&lt;カテゴリ番号&gt;/&lt;ID&gt;.md`（例：`content/1/1-07.md`、`content/1/1-07-a.md`）
+   - 中身：テンプレートどおりの front matter（--- で囲む）と本文だけ。コードブロックや `=== FILE: … ===` の区切りは入れない
+   - コミットメッセージ：`&lt;ID&gt; &lt;疑問の文&gt; (#Issue番号)`
+3. 全部書き終えたら、`content/8-rest` から main へのプルリクエストを作る。タイトルは Issue #8 と同じ、本文の1行目に `Closes #8`、続けて：書いたもの（記事IDまたは選手名）の一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+4. チャットには、コミットしたファイルの一覧とPRのURLだけを短く返す（本文をチャットに貼らない）
+- 途中で止まったときは「どこまでコミットしたか」を書いて止まり、「続き」と送られたら次のファイルから再開する。同じファイルを二重に作らない
+- 書き込めなかったときは、エラーの内容をそのまま伝えて止まる（チャットに全文を貼る方式に切り替えない）
 
 # 添付資料
 &lt;&lt;&lt;ファイル docs/content-template.md&gt;&gt;&gt;
