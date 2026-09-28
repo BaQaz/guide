@@ -233,6 +233,10 @@ PAGE = """<!doctype html>
 main{max-width:760px;margin:0 auto;padding:16px}h1{font-size:1.4rem;margin:.3em 0}h2{font-size:1.15rem;margin:1.6em 0 .5em;border-left:4px solid var(--accent);padding-left:.5em}
 a{color:var(--accent)}ol,ul{padding-left:1.3em}li{margin:.25em 0}code{background:var(--card);border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:.88em;word-break:break-all}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+.card.sent{opacity:.45}.card.next{border:2px solid var(--accent)}
+.badge{display:inline-block;font-size:.75rem;font-weight:700;border-radius:999px;padding:1px 8px;margin-right:6px;background:var(--accent);color:var(--bg)}
+.sentnote{font-size:.8rem;color:var(--sub);margin-top:6px}.sentnote a{margin-left:6px}
+.stamp{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:.85rem}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row h3{margin:0;font-size:1rem;flex:1;min-width:12em}
 .tag{font-size:.75rem;border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--sub)}
 button{font:inherit;font-size:.9rem;border:0;border-radius:8px;padding:8px 14px;background:var(--accent);color:var(--bg);cursor:pointer}
@@ -241,6 +245,7 @@ textarea{width:100%;height:220px;margin-top:6px;font:12px/1.5 ui-monospace,monos
 .small{font-size:.85rem;color:var(--sub)}
 </style></head><body><main>
 <h1>観戦ガイドの作業手順</h1>
+<p class="stamp">このページは <b>GENERATED</b>（日本時間）の main をもとに作られています。古いと思ったら、ページを再読み込みしてください。<br>コピーしたカードには「送った」の印が付いて薄くなります（この端末のこのブラウザだけ）。GPT の作業がマージされると、カードそのものが消えます。</p>
 <p class="small">2026/9/28 ロッテ×日本ハム観戦ガイド（<a href="REPO">BaQaz/guide</a>）。このページは main が更新されるたびに自動で作り直され、<strong>まだ書かれていない記事のプロンプトだけ</strong>が並びます。できることは ChatGPT で、ChatGPT ではできないことだけ Claude で行います。</p>
 <p class="small">最新版を開く：<a href="https://baqaz.github.io/guide/docs/gpt-prompts.html">GitHub Pages</a>（Pages を有効にした後）。Pages を使わない場合は、Claude のプロジェクトで「プロンプト集を更新して」と送ると、いつものリンクが最新版になります。</p>
 
@@ -325,17 +330,37 @@ TOOL_CLAUDE
 </ul>
 </main>
 <script>
+const SK='sentJobs';
+const loadSent=()=>{try{return JSON.parse(localStorage.getItem(SK)||'{}')}catch(e){return {}}};
+const saveSent=v=>{try{localStorage.setItem(SK,JSON.stringify(v))}catch(e){}};
+function paint(){
+  const sent=loadSent(); let first=true;
+  document.querySelectorAll('.card[data-job]').forEach(c=>{
+    const k=c.dataset.job, t=sent[k]; c.classList.toggle('sent',!!t); c.classList.remove('next');
+    c.querySelectorAll('.badge,.sentnote').forEach(x=>x.remove());
+    if(t){ const d=new Date(t); const n=document.createElement('div'); n.className='sentnote';
+      n.innerHTML='送った（'+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')+'）。GPT の作業がマージされると消えます。<a href="#">送っていない</a>';
+      n.querySelector('a').onclick=e=>{e.preventDefault();const v=loadSent();delete v[k];saveSent(v);paint()}; c.appendChild(n);
+      c.parentNode.appendChild(c); }
+    else if(first){ first=false; c.classList.add('next'); const b=document.createElement('span'); b.className='badge'; b.textContent='次はこれ'; c.querySelector('h3').prepend(b); }
+  });
+  // 消えたカードの印は捨てる
+  const keys=new Set([...document.querySelectorAll('.card[data-job]')].map(c=>c.dataset.job)); const v=loadSent(); let ch=false;
+  Object.keys(v).forEach(k=>{if(!keys.has(k)){delete v[k];ch=true}}); if(ch) saveSent(v);
+}
 document.querySelectorAll('button[data-copy]').forEach(b=>b.onclick=async()=>{
   const ta=document.getElementById(b.dataset.copy);
   try{await navigator.clipboard.writeText(ta.value)}catch(e){ta.parentElement.open=true;ta.select();document.execCommand('copy')}
   b.textContent='コピーしました';b.classList.add('done');setTimeout(()=>{b.textContent='コピー';b.classList.remove('done')},2000);
+  const c=b.closest('.card[data-job]'); if(c){const v=loadSent(); v[c.dataset.job]=Date.now(); saveSent(v); setTimeout(paint,600)}
 });
+paint();
 </script>
 </body></html>"""
 
 
 def card(i, issue, title, prio, prompt):
-    return f"""<div class="card"><div class="row"><h3>{i + 1}. #{issue} {html.escape(title)}</h3><span class="tag">{prio}</span>
+    return f"""<div class="card" data-job="{html.escape(title)}"><div class="row"><h3>{i + 1}. #{issue} {html.escape(title)}</h3><span class="tag">{prio}</span>
 <button data-copy="p{i}">コピー</button></div>
 <div class="small">{len(prompt):,} 文字 ・ <a href="{REPO}/issues/{issue}">Issue #{issue}</a></div>
 <details><summary>中身を見る</summary><textarea id="p{i}" readonly>{html.escape(prompt)}</textarea></details></div>"""
@@ -643,7 +668,8 @@ CLAUDE_TEXT = """【ファクトチェック】BaQaz/guide の open な記事 PR
 
 
 def tool(i, title, prompt, note=""):
-    return f"""<div class="card"><div class="row"><h3>{html.escape(title)}</h3><button data-copy="t{i}">コピー</button></div>
+    job = f' data-job="{html.escape(title)}"' if i >= 100 else ""
+    return f"""<div class="card"{job}><div class="row"><h3>{html.escape(title)}</h3><button data-copy="t{i}">コピー</button></div>
 {f'<div class="small">{note}</div>' if note else ''}<details><summary>中身を見る</summary><textarea id="t{i}" readonly>{html.escape(prompt)}</textarea></details></div>"""
 
 
@@ -783,7 +809,9 @@ def main():
     pcards = [tool(200 + k, f"選手カード {k + 1}：" + "・".join(g["name"] for g in grp), player_prompt(grp)) for k, grp in enumerate(pj)]
     n = sum(len(j["ids"]) for j in jobs)
     status = f"残り {n} 本・{len(cards)} チャット。" if cards else "書かれていない記事はありません。"
-    out = (PAGE.replace("REPO", REPO)
+    from datetime import datetime, timedelta, timezone
+    gen = datetime.now(timezone(timedelta(hours=9))).strftime("%m/%d %H:%M")
+    out = (PAGE.replace("REPO", REPO).replace("GENERATED", gen)
            .replace("IMGSTATUS", f"残り {sum(len(i) for i in ij)} 本・{len(ij)} チャット。" if ij else "残りはありません。")
            .replace("IMGCARDS", "\n".join(imgs) or '<p class="small">いまは対象の記事がありません。</p>')
            .replace("EPISTATUS", f"残り {sum(len(i) for i in ej)} 本・{len(ej)} チャット。" if ej else "残りはありません。").replace("DECOSTATUS", f"残り {sum(len(i) for i, _ in dj)} 本・{len(dj)} チャット。" if dj else "残りはありません。")
