@@ -86,6 +86,9 @@ a{color:var(--accent)}
 .team-col li .pos{color:var(--sub);font-size:.78rem}
 .team-col li a{color:var(--ink);text-decoration:none;font-weight:700}
 .team-col li.p{background:var(--surface)}
+.team-col li.sub{padding-top:3px;padding-bottom:3px;border-top-style:dashed}
+.team-col li.sub a{font-weight:400}
+.team-col .sub-note{display:block;font-size:.72rem;color:var(--sub);font-weight:400;line-height:1.3}
 
 /* 記事 */
 .article h2{margin:2.2em 0 .6em}
@@ -244,8 +247,14 @@ function lineupCols(){
     if(useLive && L[key]) items = L[key].map(x=>({n:x.order??'', pos:x.pos||'', name:x.name||''}));
     else items = rows.map(r=>({n:r[0], pos:posOf(r[idx]), name:r[idx]}));
     const p = useLive && L.pitchers && L.pitchers[key] ? L.pitchers[key] : pcell;
-    return `<div class="team-col"><h4>${team}<small>${useLive||D.lineup_announced?'発表':'予想'}</small></h4><ol>${items.map(x=>`<li><span class="n">${esc(x.n)}</span><span class="pos">${esc(x.pos)}</span><span>${pLink(x.name, useLive?team:'')}</span></li>`).join('')}
-      <li class="p"><span class="n"></span><span class="pos">投</span><span>${p?pLink(p, useLive?team:''):''}</span></li></ol></div>`;
+    // 試合後は data/result.json の途中交代（代打・代走・守備）と継投を、打順の下に足す
+    const fin = !useLive && D.result && D.result.final ? D.result : null;
+    const ch = fin && fin.changes ? fin.changes[key]||[] : [], rel = fin && fin.relief ? fin.relief[key]||[] : [];
+    const note = t => t ? `<small class="sub-note">${esc(t)}</small>` : '';
+    const subRows = n => ch.filter(c=>String(c.order)===String(n) && c.name).map(c=>`<li class="sub"><span class="n"></span><span class="pos">${esc(c.pos||'')}</span><span>${pLink(c.name,'')}${note(c.note)}</span></li>`).join('');
+    const moved = n => (ch.find(c=>String(c.order)===String(n) && c.move)||{}).move;
+    return `<div class="team-col"><h4>${team}<small>${fin?'交代・継投つき':useLive||D.lineup_announced?'発表':'予想'}</small></h4><ol>${items.map(x=>`<li><span class="n">${esc(x.n)}</span><span class="pos">${esc(x.pos)}</span><span>${pLink(x.name, useLive?team:'')}${note(moved(x.n))}</span></li>${subRows(x.n)}`).join('')}
+      <li class="p"><span class="n"></span><span class="pos">投</span><span>${p?pLink(p, useLive?team:''):''}${fin&&rel.length?note('先発'):''}</span></li>${rel.map(r=>`<li class="p sub"><span class="n"></span><span class="pos">投</span><span>${pLink(r.name,'')}${note(r.note)}</span></li>`).join('')}</ol></div>`;
   };
   return `<div class="lineup">${col('日本ハム','fighters',3,pit[3])}${col('ロッテ','lotte',1,pit[1])}</div>`;
 }
@@ -299,7 +308,7 @@ function article(id){
   $('#app').innerHTML = h;
 }
 function lineup(){
-  let h = `<a class="back" href="#/">← トップ</a><h1>スタメンと選手カード</h1><p class="lead">${D.lineup_announced?'スタメンは試合前に発表されたものです（NPB公式）。試合中の交代は':'予想スタメンは試合前の発表で変わります。発表後は'}<a href="#/live">写真から更新</a>できます。</p>${lineupCols()}`;
+  let h = `<a class="back" href="#/">← トップ</a><h1>スタメンと選手カード</h1><p class="lead">${D.result&&D.result.final?'スタメンは試合前の発表、その下の代打・代走・守備の交代と継投は試合後にNPB公式の投打成績から足したものです。':''}${D.lineup_announced?'スタメンは試合前に発表されたものです（NPB公式）。試合中の交代は':'予想スタメンは試合前の発表で変わります。発表後は'}<a href="#/live">写真から更新</a>できます。</p>${lineupCols()}`;
   let last='';
   D.players.forEach((p,i)=>{ const g=p.team+'｜'+p.section; if(g!==last){h+=(last?'</div>':'')+`<p class="section-title">${esc(g)}</p><div class="qs">`;last=g}
     h+=`<a class="q" href="#/p/${i}">${esc(p.name)}<small>${esc(p.title.replace(p.name,'').replace(/^[（(]|[）)]$/g,''))}</small></a>` });

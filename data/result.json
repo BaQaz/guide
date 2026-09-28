@@ -3,14 +3,155 @@
   "article": "5-14",
   "score": {
     "inning": "試合終了",
-    "fighters": [0, 0, 1, 0, 0, 0, 2, 5, 0],
-    "lotte": [0, 0, 0, 0, 0, 0, 0, 1, 2],
-    "R": {"fighters": 8, "lotte": 3},
-    "H": {"fighters": 9, "lotte": 6},
-    "E": {"fighters": 0, "lotte": 0},
+    "fighters": [
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      2,
+      5,
+      0
+    ],
+    "lotte": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      2
+    ],
+    "R": {
+      "fighters": 8,
+      "lotte": 3
+    },
+    "H": {
+      "fighters": 9,
+      "lotte": 6
+    },
+    "E": {
+      "fighters": 0,
+      "lotte": 0
+    },
     "memo": "日本ハム 8-3 ロッテ｜勝 福島 負 ジャクソン｜本 郡司7号(満塁) 山口33号",
-    "count": {"B": 0, "S": 0, "O": 0},
-    "bases": [0, 0, 0]
+    "count": {
+      "B": 0,
+      "S": 0,
+      "O": 0
+    },
+    "bases": [
+      0,
+      0,
+      0
+    ]
   },
-  "source": "https://npb.jp/scores/2026/0928/m-f-24/"
+  "source": "https://npb.jp/scores/2026/0928/m-f-24/",
+  "changes": {
+    "fighters": [
+      {
+        "order": 1,
+        "move": "7回〜右"
+      },
+      {
+        "order": 4,
+        "pos": "左",
+        "name": "細川凌平",
+        "note": "7回〜守備"
+      },
+      {
+        "order": 7,
+        "pos": "三",
+        "name": "奈良間大己",
+        "note": "7回 代走"
+      },
+      {
+        "order": 8,
+        "pos": "打",
+        "name": "郡司裕也",
+        "note": "8回 代打・満塁弾"
+      },
+      {
+        "order": 8,
+        "pos": "二",
+        "name": "山縣秀",
+        "note": "8回〜守備"
+      },
+      {
+        "order": 9,
+        "pos": "中",
+        "name": "五十幡亮汰",
+        "note": "7回 代打"
+      }
+    ],
+    "lotte": [
+      {
+        "order": 3,
+        "pos": "打",
+        "name": "上田希由翔",
+        "note": "9回 代打"
+      },
+      {
+        "order": 4,
+        "pos": "捕",
+        "name": "松川虎生",
+        "note": "9回〜守備"
+      },
+      {
+        "order": 6,
+        "pos": "中",
+        "name": "山本大斗",
+        "note": "8回 代打"
+      },
+      {
+        "order": 7,
+        "pos": "二",
+        "name": "池田来翔",
+        "note": "8回 代打"
+      },
+      {
+        "order": 9,
+        "pos": "遊",
+        "name": "宮崎竜成",
+        "note": "8回 代打"
+      }
+    ]
+  },
+  "relief": {
+    "fighters": [
+      {
+        "name": "大川慈英",
+        "note": "6回"
+      },
+      {
+        "name": "孫易磊",
+        "note": "7回"
+      },
+      {
+        "name": "島本浩也",
+        "note": "8回"
+      },
+      {
+        "name": "河野竜生",
+        "note": "9回"
+      }
+    ],
+    "lotte": [
+      {
+        "name": "坂本光士郎",
+        "note": "7回途中"
+      },
+      {
+        "name": "澤田圭佑",
+        "note": "8回"
+      },
+      {
+        "name": "小野郁",
+        "note": "9回"
+      }
+    ]
+  }
 }
