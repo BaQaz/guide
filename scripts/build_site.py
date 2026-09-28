@@ -99,7 +99,7 @@ def load_players():
     readme = base / "README.md"
     if readme.exists():
         for line in readme.read_text(encoding="utf-8").splitlines():
-            m = re.match(r"^\| (\d|投) \| (.+?) \| (.*?) \| (.+?) \| (.*?) \|$", line)
+            m = re.match(r"^\|\s*(\d|投)\s*\|\s*(.+?)\s*\|\s*(.*?)\s*\|\s*(.+?)\s*\|\s*(.*?)\s*\|$", line)
             if m:
                 lineup.append(list(m.groups()))
     return groups, lineup
