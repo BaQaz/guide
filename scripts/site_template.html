@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>はじめての野球観戦ガイド</title>
+<style>
+:root{--bg:#f7f7f5;--card:#fff;--ink:#1d1d1f;--sub:#6b6b70;--line:#e3e3e0;--accent:#1d2d6b;--star:#c8102e;--soft:#eef0f7}
+@media (prefers-color-scheme: dark){:root{--bg:#111214;--card:#1c1d21;--ink:#ececef;--sub:#a0a0a8;--line:#2e2f35;--accent:#9fb2ff;--star:#ff6b7d;--soft:#23263a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif}
+header{position:sticky;top:0;z-index:2;background:var(--accent);color:#fff;padding:10px 16px;display:flex;gap:12px;align-items:center}
+@media (prefers-color-scheme: dark){header{color:#111}}
+header a{color:inherit;text-decoration:none;font-weight:700}
+header .sp{flex:1}
+main{max-width:640px;margin:0 auto;padding:16px}
+h1{font-size:1.35rem;line-height:1.4;margin:.2em 0 .6em}
+h2{font-size:1.1rem;margin:1.4em 0 .4em;padding-left:.5em;border-left:4px solid var(--accent)}
+h3{font-size:1rem;margin:1.2em 0 .3em}
+a{color:var(--accent)}
+.lead{color:var(--sub);font-size:.9rem}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 16px}
+.tabs button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 14px;font:inherit;font-size:.9rem}
+.tabs button[aria-pressed=true]{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.cat{margin:18px 0 6px;font-weight:700;font-size:.95rem;color:var(--sub)}
+.btns{display:grid;gap:8px}
+.q{display:block;text-decoration:none;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;line-height:1.5}
+.q.off{color:var(--sub);opacity:.7}
+.q small{display:block;color:var(--sub);font-size:.78rem}
+.star{color:var(--star);font-weight:700;margin-right:4px}
+.note{background:var(--soft);border-radius:10px;padding:10px 12px;font-size:.88rem;margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:.88rem;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.scroll{overflow-x:auto}
+ul{padding-left:1.3em}
+.src{font-size:.8rem;color:var(--sub);word-break:break-all}
+.gpt{font:inherit;font-size:.78rem;border:1px solid var(--line);background:var(--soft);color:var(--accent);border-radius:999px;padding:3px 10px;margin:2px 0 6px;cursor:pointer}
+.gpt.done{background:var(--accent);color:var(--bg)}
+.qrow{display:flex;gap:6px;align-items:stretch}.qrow .q{flex:1}.qrow .gpt{margin:0;white-space:nowrap}
+textarea{width:100%;min-height:140px;font:13px/1.5 ui-monospace,monospace;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
+.btn{font:inherit;border:0;border-radius:8px;padding:8px 14px;background:var(--accent);color:var(--bg);cursor:pointer;margin:4px 4px 4px 0}
+.score td,.score th{text-align:center;padding:4px}
+.back{display:inline-block;margin-bottom:8px;font-size:.9rem}
+</style>
+</head>
+<body>
+<header><a href="#/">⚾ 観戦ガイド</a><span class="sp"></span><a href="#/lineup">スタメン</a><a href="#/live">ライブ</a><a href="#/today">今日</a></header>
+<main id="app"></main>
+<script>
+const D = /*__DATA__*/null;
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`(.+?)`/g,'<code>$1</code>')
+  .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
+  .replace(/(^|[^"])(https?:\/\/[^\s<]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+function md(src){
+  src = src.replace(/<!--[\s\S]*?-->/g,'');
+  const out=[]; let list=null, para=[], table=null;
+  const flush=()=>{ if(para.length){out.push('<p>'+inline(para.join(''))+'</p>');para=[]}
+    if(list){out.push('<ul>'+list.map(i=>'<li>'+inline(i)+'</li>').join('')+'</ul>');list=null}
+    if(table){out.push('<div class="scroll"><table>'+table.filter(r=>!/^\|\s*-/.test(r)).map((r,i)=>'<tr>'+r.replace(/^\||\|$/g,'').split('|').map(c=>i?'<td>'+inline(c.trim())+'</td>':'<th>'+inline(c.trim())+'</th>').join('')+'</tr>').join('')+'</table></div>');table=null} };
+  for(const raw of src.split('\n')){
+    const l=raw.trimEnd(); let m;
+    if(!l.trim()){flush();continue}
+    if(l.startsWith('|')){ if(!table){flush();table=[]} table.push(l); continue }
+    if((m=l.match(/^(#{1,3}) (.+)/))){flush();const n=Math.max(2,m[1].length);out.push(`<h${n}>${inline(m[2])}</h${n}>`);continue}
+    if((m=l.match(/^\s*[-*] (.+)/))){ if(para.length||table)flush(); (list=list||[]).push(m[1]); continue }
+    if(list){flush()} para.push(l.trim());
+  }
+  flush(); return out.join('');
+}
+const CTX = '私は今、2026年9月28日（月）18:00開始の「千葉ロッテ×北海道日本ハム」（ZOZOマリンスタジアム、1塁側の内野席）を観戦しています。野球はほぼ初心者で、2018年ごろまでは少し見ていました。';
+const RULES = '\n\n# 答え方\n- 球場でスマホで読むので、結論を先に、全体で400〜800字程度に\n- 専門用語には必ずかっこで言い換えを添える\n- 2026年の出来事や成績はあなたの学習データより新しいことがあるので、ウェブ検索でNPB・球団公式・主要紙を確認し、出典URLを最後に並べる。確認できないことは「確認できませんでした」と書く\n- 最後に「今日の試合で見るポイント」を1〜3個';
+const PROMPTS = [];
+function gptBtn(prompt, label){ PROMPTS.push(prompt); return `<button class="gpt" data-p="${PROMPTS.length-1}">${label||'📋 GPTで深掘り'}</button>` }
+async function copyText(t){ try{ await navigator.clipboard.writeText(t); return true }catch(e){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); let ok=false; try{ok=document.execCommand('copy')}catch(_){} ta.remove(); return ok } }
+document.addEventListener('click', async e=>{ const b=e.target.closest('.gpt'); if(!b) return; e.preventDefault();
+  const ok = await copyText(PROMPTS[+b.dataset.p]); const t=b.textContent; b.textContent= ok?'コピーしました→GPTに貼る':'コピーできませんでした'; b.classList.add('done'); setTimeout(()=>{b.textContent=t;b.classList.remove('done')},2500) });
+const plain = s => s.replace(/<!--[\s\S]*?-->/g,'').trim();
+const askQ = (q) => `${CTX}\n\n「${q.title.replace(/🔍/g,'')}」について、野球初心者の私にわかるように教えてください。${q.parent&&allQ[q.parent]?`（「${allQ[q.parent].title}」の中の疑問です）`:''}${RULES}`;
+const deepSec = (title, head, text) => `${CTX}\n\n観戦ガイドの「${title}」の中の「${head}」を読みました。内容は次のとおりです。\n\n-----\n${plain(text)}\n-----\n\nこの内容について、さらに詳しく教えてください。背景・具体的なエピソードや数字・よくある誤解があれば補ってください。ガイドの記述に誤りや古い情報があれば指摘してください。${RULES}`;
+const deepPlayer = (p) => `${CTX}\n\n観戦ガイドの選手カード「${p.title}」（${p.team}・${p.section}）を読みました。\n\n-----\n${plain(p.body)}\n-----\n\nこの人物について、さらに詳しく教えてください。特に、(1) 今季の成績と最近の調子（直近の試合結果）、(2) 人柄がわかるエピソードや名言、(3) 今日の試合で注目すべき場面、を知りたいです。カードの記述に誤りや古い情報があれば指摘してください。${RULES}`;
+const newPlayer = (name, team) => `${CTX}\n\n${team}の「${name}」選手が今日出ています。観戦ガイドにこの選手のカードがないので、次の7項目で教えてください。\n- 特徴：\n- 見どころ：\n- 出立ち：（体格・背番号・投打など）\n- プロまで：\n- プロで：\n- 直近1年：\n- 直近数試合：${RULES}`;
+const allQ = {}; D.tree.forEach(c=>c.items.forEach(i=>{allQ[i.id]={...i,cat:c};i.children.forEach(ch=>allQ[ch.id]={...ch,parent:i.id,cat:c})}));
+const has = id => !!D.articles[id];
+let onlyStar = false;
+try{ onlyStar = localStorage.getItem('onlyStar')==='1' }catch(e){}
+function qBtn(q){
+  const ok = has(q.id) || q.id==='5-07';
+  const href = q.id==='5-07' && !has(q.id) ? '#/lineup' : '#/q/'+q.id;
+  return ok ? `<a class="q" href="${href}">${q.star?'<span class="star">★</span>':''}${esc(q.title)}</a>`
+            : `<div class="qrow"><span class="q off">${q.star?'<span class="star">★</span>':''}${esc(q.title)}<small>準備中</small></span>${gptBtn(askQ(q),'📋 GPTに聞く')}</div>`;
+}
+function home(){
+  let h = `<h1>はじめての野球観戦ガイド</h1><p class="lead">2026/9/28 ロッテ×日本ハム（ZOZOマリン 18:00）。気になるボタンを押してください。</p>
+  <div class="tabs"><button id="all" aria-pressed="${!onlyStar}">すべて</button><button id="star" aria-pressed="${onlyStar}">★今日役立つ</button></div>`;
+  const lv = loadLive(); if(lv.score) h += '<div class="note"><b>いまのスコア</b>'+scoreTable(lv.score)+'<a href="#/live">更新する</a></div>';
+  else h += '<div class="note">📷 スタメンやスコアボードの写真から内容を更新できます → <a href="#/live">ライブ更新</a></div>';
+  D.tree.forEach(c=>{
+    const items = c.items.filter(i=>!onlyStar||i.star); if(!items.length) return;
+    h += `<div class="cat">${c.no}. ${esc(c.title)}</div><div class="btns">${items.map(qBtn).join('')}</div>`;
+  });
+  $('#app').innerHTML = h;
+  const set=v=>{onlyStar=v;try{localStorage.setItem('onlyStar',v?'1':'0')}catch(e){};home()};
+  $('#all').onclick=()=>set(false); $('#star').onclick=()=>set(true);
+}
+function article(id){
+  const q = allQ[id]||{title:id}, a = D.articles[id];
+  let h = `<a class="back" href="#/${q.parent?'q/'+q.parent:''}">← ${q.parent?'もどる':'トップ'}</a><h1>${esc(a&&a.meta.title||q.title)}</h1>`;
+  if(!a){ h += '<p>この記事は準備中です。GPTに聞いてみてください。</p>'+gptBtn(askQ(q),'📋 GPTに聞くプロンプトをコピー') }
+  else{
+    if(a.meta.needs_check) h += '<div class="note">この記事には、まだ確認できていない情報が含まれます。</div>';
+    const t = a.meta.title||q.title;
+    a.body.split(/^(?=## )/m).forEach(sec=>{ const m=sec.match(/^## (.+)\n?([\s\S]*)$/);
+      h += m ? md('## '+m[1]) + gptBtn(deepSec(t, m[1], m[2])) + md(m[2]) : md(sec) });
+    const kids = (q.children||[]).map(c=>allQ[c.id]);
+    if(kids.length) h += `<h2>さらに気になる？</h2><div class="btns">${kids.map(qBtn).join('')}</div>`;
+    const rel = (a.meta.related||[]).filter(r=>allQ[r]);
+    if(rel.length) h += `<h2>関連する疑問</h2><div class="btns">${rel.map(r=>qBtn(allQ[r])).join('')}</div>`;
+    const src = a.meta.sources||[]; if(src.length) h += `<h3>出典</h3><div class="src">${src.map(inline).join('<br>')}</div>`;
+  }
+  if(id.startsWith('5-07')) h += '<p><a href="#/lineup">→ スタメン表と選手カードを見る</a></p>';
+  $('#app').innerHTML = h;
+}
+const norm = x => String(x).replace(/[（(].*$/,'').replace(/\s/g,'').replace(/髙/g,'高').replace(/﨑/g,'崎');
+function findP(cell){ const name = norm(cell); if(!name) return -1;
+  return D.players.findIndex(p=>{ const n=norm(p.name); return n===name || n.endsWith(name) || (name.length>=2 && name.startsWith(n)) }) }
+function pLink(cell, team){
+  const i = findP(cell);
+  return i<0 ? esc(cell)+(team?' '+gptBtn(newPlayer(norm(cell),team),'📋 GPT'):'') : `<a href="#/p/${i}">${esc(cell)}</a>`;
+}
+function loadLive(){ try{ return JSON.parse(localStorage.getItem('live')||'{}') }catch(e){ return {} } }
+function saveLive(v){ try{ localStorage.setItem('live', JSON.stringify(v)); return true }catch(e){ return false } }
+function scoreTable(sc){ if(!sc||(!sc.lotte&&!sc.fighters)) return '';
+  const n=Math.max(9,(sc.lotte||[]).length,(sc.fighters||[]).length), cols=[...Array(n)].map((_,i)=>i+1);
+  const g=(o,k)=>o&&o[k]!=null?esc(o[k]):'';
+  const row=(lab,arr,k)=>`<tr><th>${lab}</th>${cols.map(i=>`<td>${arr&&arr[i-1]!=null?esc(arr[i-1]):''}</td>`).join('')}<td><b>${g(sc.R,k)}</b></td><td>${g(sc.H,k)}</td><td>${g(sc.E,k)}</td></tr>`;
+  return `<div class="scroll"><table class="score"><tr><th></th>${cols.map(i=>`<th>${i}</th>`).join('')}<th>R</th><th>H</th><th>E</th></tr>`+
+   row('日',sc.fighters,'fighters')+row('ロ',sc.lotte,'lotte')+'</table></div>'+
+   `<p class="lead">${esc(sc.inning||'')} ${esc(sc.memo||'')} ${sc.updated?'（'+esc(sc.updated)+' 更新）':''}</p>`;
+}
+function lineup(){
+  let h = '<a class="back" href="#/">← トップ</a><h1>予想スタメンと選手カード</h1><p class="lead">試合前の発表で変わることがあります。名前を押すとカードが開きます。</p>';
+  const live = loadLive();
+  if(live.lineup && (live.lineup.lotte||live.lineup.fighters)){
+    const L=live.lineup, lo=L.lotte||[], fi=L.fighters||[], rows=Math.max(lo.length,fi.length);
+    const cell=(x,team)=>x?`${esc(x.order??'')} ${esc(x.pos||'')} ${pLink(x.name||'',team)}`:'';
+    const pit=(k,team)=>L.pitchers&&L.pitchers[k]?pLink(L.pitchers[k],team):'';
+    h += `<div class="note">写真から更新した<b>実際のスタメン</b>です（${esc(L.updated||'')}）。<a href="#/live">更新・元に戻す</a></div><div class="scroll"><table><tr><th>ロッテ</th><th>日本ハム</th></tr>`+
+      [...Array(rows)].map((_,i)=>`<tr><td>${cell(lo[i],'ロッテ')}</td><td>${cell(fi[i],'日本ハム')}</td></tr>`).join('')+
+      `<tr><td>投 ${pit('lotte','ロッテ')}</td><td>投 ${pit('fighters','日本ハム')}</td></tr></table></div><h2>予想スタメン（試合前）</h2>`;
+  } else h += '<div class="note">スタメンが発表されたら、<a href="#/live">ライブ更新</a>で写真から実際のスタメンに差し替えられます。</div>';
+  if(D.lineup.length) h += '<div class="scroll"><table><tr><th></th><th>ロッテ</th><th>日本ハム</th></tr>'+D.lineup.map(r=>`<tr><td>${r[0]}</td><td>${pLink(r[1])}<br><small>${esc(r[2])}</small></td><td>${pLink(r[3])}<br><small>${esc(r[4])}</small></td></tr>`).join('')+'</table></div>';
+  let last='';
+  D.players.forEach((p,i)=>{ const g=p.team+'｜'+p.section; if(g!==last){h+=`<div class="cat">${esc(g)}</div>`;last=g} h+=`<a class="q" style="margin-bottom:6px" href="#/p/${i}">${esc(p.title)}</a>` });
+  $('#app').innerHTML = h;
+}
+function player(i){
+  const p = D.players[i]; if(!p) return lineup();
+  $('#app').innerHTML = `<a class="back" href="#/lineup">← スタメン表</a><p class="lead">${esc(p.team)}｜${esc(p.section)}</p><h1>${esc(p.title)}</h1>`+gptBtn(deepPlayer(p),'📋 GPTで深掘り')+md(p.body);
+}
+const PHOTO_PROMPT = `${CTX}\n\n添付した写真（球場のビジョンのスタメン表、またはスコアボード）を読み取って、観戦ガイドに貼り付けるデータを作ってください。\n\n# 出力のしかた（厳守）\n- 次の形のJSONだけを、1つのコードブロックで出してください。説明はコードブロックの外に短く\n- 写っていない項目は省略してください（推測で埋めない）。読み取れない文字は「?」にしてください\n- 選手名はフルネームの漢字（外国人選手はカタカナ）。守備位置は「投 捕 一 二 三 遊 左 中 右 指」の1文字\n- fighters＝日本ハム（先攻）、lotte＝ロッテ（後攻）。取り違えないこと\n\n## スタメン表の写真のとき\n{"lineup": {"lotte": [{"order": 1, "pos": "左", "name": "西川史礁"}], "fighters": [{"order": 1, "pos": "遊", "name": "水野達稀"}], "pitchers": {"lotte": "ジャクソン", "fighters": "福島蓮"}}}\n（片方のチームしか写っていなければ、そのチームだけ）\n\n## スコアボードの写真のとき\n{"score": {"inning": "5回裏", "fighters": [0, 0, 1, 0, 0], "lotte": [0, 2, 0, 0], "R": {"fighters": 1, "lotte": 2}, "H": {"fighters": 4, "lotte": 6}, "E": {"fighters": 0, "lotte": 1}, "memo": "ボードに出ている投手・打者・カウント・球速などを短く"}}\n（まだ攻撃していない回は配列に入れない）\n\n最後に、コードブロックの外で「この状況で初心者が見るポイント」を2〜3行で書いてください。`;
+const SCORE_ASK = sc => `${CTX}\n\n今の試合状況は次のとおりです（fighters＝日本ハム・先攻、lotte＝ロッテ・後攻）。\n${JSON.stringify(sc)}\n\nこの状況を初心者向けに解説してください。どちらが有利か、次の見どころ、日本ハムの2位争い（西武との差）への影響を、ウェブ検索で今日の西武戦の途中経過も確認したうえで教えてください。${RULES}`;
+function live(){
+  const v = loadLive();
+  let h = `<a class="back" href="#/">← トップ</a><h1>ライブ更新</h1><p class="lead">写真 → ChatGPT → ここに貼る、でスタメン表とスコアが更新されます。</p>
+  <ol><li>ビジョンのスタメン表やスコアボードを写真に撮る</li><li>下のボタンでプロンプトをコピーし、ChatGPT に<b>写真と一緒に</b>送る</li><li>返ってきたコードブロックの中身（{ から } まで）をコピーして、下の欄に貼って「反映」</li></ol>
+  ${gptBtn(PHOTO_PROMPT,'📋 写真読み取りプロンプトをコピー')}
+  <textarea id="livein" placeholder='{"lineup": …} または {"score": …} を貼る'></textarea>
+  <div><button class="btn" id="apply">反映</button><button class="btn" id="clear" style="background:var(--sub)">元に戻す（全部消す）</button></div><p id="msg" class="lead"></p>`;
+  if(v.score) h += '<h2>スコア</h2>'+scoreTable(v.score)+gptBtn(SCORE_ASK(v.score),'📋 この状況をGPTに解説してもらう');
+  if(v.lineup) h += '<p><a href="#/lineup">→ 更新したスタメン表を見る</a></p>';
+  h += '<p class="lead">データはこの端末のこのブラウザにだけ保存されます。</p>';
+  $('#app').innerHTML = h;
+  $('#apply').onclick = ()=>{
+    const t = $('#livein').value; let obj;
+    try{ obj = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}')+1)) }catch(e){ $('#msg').textContent='JSON として読めませんでした。コードブロックの中身だけを貼ってください。'; return }
+    if(!obj.lineup && !obj.score){ $('#msg').textContent='"lineup" か "score" が見つかりませんでした。'; return }
+    const now = new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}); const cur = loadLive();
+    if(obj.lineup){ cur.lineup = {...(cur.lineup||{}), ...obj.lineup, updated: now} }
+    if(obj.score){ cur.score = {...obj.score, updated: now} }
+    $('#msg').textContent = saveLive(cur) ? '反映しました。' : '保存できませんでした（プライベートブラウズでは保存できないことがあります）。';
+    setTimeout(live, 700);
+  };
+  $('#clear').onclick = ()=>{ if(confirm('写真から更新したスタメンとスコアを消しますか？')){ saveLive({}); live() } };
+}
+function route(){
+  PROMPTS.length = 0;
+  const h = location.hash.slice(2).split('/');
+  if(h[0]==='q') article(h[1]); else if(h[0]==='lineup') lineup(); else if(h[0]==='p') player(+h[1]); else if(h[0]==='live') live();
+  else if(h[0]==='today') $('#app').innerHTML='<a class="back" href="#/">← トップ</a>'+md(D.today.replace(/^# /,'## '));
+  else home();
+  window.scrollTo(0,0);
+}
+addEventListener('hashchange', route); route();
+</script>
+</body>
+</html>

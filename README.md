@@ -15,8 +15,13 @@ data/
   players/             選手・監督カード（7項目）。README.md に書式と予想スタメン
 content/
   1/ … 8/              記事本体（1問＝1ファイル、ID名）
-site/                  表示用のサイト（Issue #10 で GPT が作成）
+site/index.html        表示用のサイト（1ファイル。scripts/build_site.py で生成。main への push で自動更新）
+scripts/               サイトとプロンプト集を作るスクリプト
+docs/gpt-prompts.html  ChatGPT に貼るプロンプト集と、GitHub への入れ方・共有のしかた（ブラウザで開く）
 ```
+
+## GPT で作業するには
+`docs/gpt-prompts.html` をダウンロードしてブラウザで開き、手順どおりにコピー＆ペーストする。
 
 ## 進め方
 1. `docs/question-tree.md` で疑問を確定する（済）
