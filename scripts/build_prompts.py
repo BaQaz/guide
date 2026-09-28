@@ -296,6 +296,10 @@ TOOL_MERGE
 <p class="small">疑問ツリー（docs/question-tree.md）に新しい疑問を足す PR を作ります。1チャットで1回。マージすると、上の「記事のプロンプト」に新しい疑問の分が出ます。</p>
 TOOL_MORE
 
+<h2>1e. 画像が本文と合っているかの点検（ChatGPT）</h2>
+<p class="small">本文と違うものが写った画像を、差し替えるか消します。IMGSTATUS</p>
+IMGCARDS
+
 <h2>3b. エピソードを探す（ChatGPT・テーマ1つ）</h2>
 <p class="small">「この話、もっと面白いのない？」と思ったとき用。書き込みはせず、候補をチャットに返します。</p>
 TOOL_EPISEARCH
@@ -446,6 +450,42 @@ EPISEARCH_PROMPT = """あなたは、野球をまったく知らない人向け�
 - 確認できない話は出さない
 
 テーマ：＿＿＿＿（例：三振、ホームラン、審判、ZOZOマリンの風）"""
+
+
+# ---- 画像が本文と合っているかの点検 ----
+IMG_PER_CHAT = 15
+
+
+def img_jobs(arts):
+    todo = sorted((i for i, a in arts.items() if "upload.wikimedia.org" in a["body"] and a["meta"].get("images") != "v2"), key=order_key)
+    n = math.ceil(len(todo) / IMG_PER_CHAT) if todo else 0
+    return [todo[k * len(todo) // n:(k + 1) * len(todo) // n] for k in range(n)]
+
+
+def img_prompt(ids):
+    branch = f"content/images-{ids[0]}"
+    return f"""あなたは、野球をまったく知らない初心者向けの観戦ガイドの編集者です。記事に入れた画像の中に、本文と合っていないものがある、という指摘を受けました（例：本文は「1〜9回の得点が並ぶ表」を説明しているのに、写真はボール・ストライク・アウトだけの小さなボードだった）。画像を1枚ずつ点検してください。
+
+# 今回点検する記事（{len(ids)} 本）
+{chr(10).join("- " + i for i in ids)}
+
+# 点検の基準（1枚ずつ）
+- 画像のすぐ上・すぐ下の本文を読み、**本文が説明しているものが、そのまま写っているか**を確かめる。画像のページ（Wikimedia Commons）を開いて、何が写っているかの説明も読む
+- 合っている → そのまま
+- 合っていない（別の種類のもの・別の球場・別の選手・本文と数字や表示が違う）→ Wikimedia Commons で本文どおりのものが写った画像を探して差し替える。見つからなければ画像の行を消す
+- 表で見せられるもの（スコアボードなど）は、画像の代わりに Markdown の表で例を作ってもよい（見本：main の content/4/4-01.md）
+- 差し替える画像のルールは、添付「記事テンプレート」の「画像」の項目どおり（upload.wikimedia.org の画像だけ、キャプションと出典・作者・ライセンスを書く）
+- 迷ったら消す。読む人が「本文と写真のどちらが正しいの？」と迷う画像は、ないほうがよい
+
+# やること（1記事ずつ）
+1. main から新しいブランチ `{branch}` を作る（あれば続けて使う）
+2. 上の記事を1本ずつ点検して直し、front matter に `images: v2` を足してコミットする（直す画像がなくても `images: v2` は足す）。コミットメッセージ：`<ID> 画像を点検`
+3. 全部終えたら `{branch}` から main へのプルリクエストを作る。タイトルは「画像の点検（{ids[0]}〜{ids[-1]}）」、本文に「ID：そのまま／差し替え（理由）／削除（理由）」の一覧
+4. チャットには、その一覧と PR の URL だけを返す
+- 途中で止まったら、どこまでコミットしたかを書いて止まり、「続き」と送られたら次の記事から再開する
+
+# 添付資料
+{attach("docs/content-template.md")}"""
 
 
 # ---- 選手カードを詳しくする（穴埋め式）----
@@ -670,7 +710,7 @@ def resume_split(kind, order, size, stalled):
 
 
 def order_key(x):
-    return [int(t) if t.isdigit() else t for t in re.split(r"[-]", x)] if re.match(r"^\d-\d\d", x) else [x]
+    return (0, [t.zfill(4) for t in x.split("-")]) if re.match(r"^\d-\d\d", x) else (1, [x])
 
 
 def resume_header(b, take, label):
@@ -735,6 +775,8 @@ def main():
     ej = chunk(epi_rest, EPI_PER_CHAT)
     dj = [(ids, arts_all) for ids in chunk(deco_rest, DECO_PER_CHAT)]
     pj = chunk(pl_rest, PLAYERS_PER_CHAT)
+    ij = img_jobs(arts_all)
+    imgs = [tool(500 + k, f"画像の点検 {k + 1}：{ids[0]}〜{ids[-1]}（{len(ids)}本）", img_prompt(ids)) for k, ids in enumerate(ij)]
     resume = [tool(400 + k, f"{t}：{b['branch']}（済み {len(b['done'])}・残り {len(take)}）", pr) for k, (t, b, take, pr) in enumerate(rcards)]
     epi = [tool(300 + k, f"エピソード {k + 1}：{ids[0]}〜{ids[-1]}（{len(ids)}本）", epi_prompt(ids)) for k, ids in enumerate(ej)]
     deco = [tool(100 + k, f"装飾と画像 {k + 1}：{ids[0]}〜{ids[-1]}（{len(ids)}本）", deco_prompt(ids, arts)) for k, (ids, arts) in enumerate(dj)]
@@ -742,6 +784,8 @@ def main():
     n = sum(len(j["ids"]) for j in jobs)
     status = f"残り {n} 本・{len(cards)} チャット。" if cards else "書かれていない記事はありません。"
     out = (PAGE.replace("REPO", REPO)
+           .replace("IMGSTATUS", f"残り {sum(len(i) for i in ij)} 本・{len(ij)} チャット。" if ij else "残りはありません。")
+           .replace("IMGCARDS", "\n".join(imgs) or '<p class="small">いまは対象の記事がありません。</p>')
            .replace("EPISTATUS", f"残り {sum(len(i) for i in ej)} 本・{len(ej)} チャット。" if ej else "残りはありません。").replace("DECOSTATUS", f"残り {sum(len(i) for i, _ in dj)} 本・{len(dj)} チャット。" if dj else "残りはありません。")
            .replace("PLAYERSTATUS", f"残り {sum(len(g) for g in pj)} 人・{len(pj)} チャット。" if pj else "残りはありません。")
            .replace("STATUS", status)
