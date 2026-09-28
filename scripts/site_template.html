@@ -259,7 +259,7 @@ function home(){
   h += `<p class="section-title">スタメン</p>${lineupCols()}<p class="lead" style="margin-top:8px">名前を押すと選手カードが開きます。<a href="#/lineup">選手・監督カードの一覧</a></p>`;
   h += `<p class="section-title">この画面の見方がわからないとき</p><div class="qs">${BOARD_QS.filter(id=>allQ[id]).map(id=>qBtn(allQ[id])).join('')}</div>`;
   h += `<p class="section-title">球場のこと</p><div class="guides"><a class="guide wide" href="#/g/stadium"><b>マリーンズスタジアムガイド</b></a></div>`;
-  if(D.articles.maker) h += `<p class="section-title">おまけ</p><div class="guides"><a class="guide wide" href="#/q/maker"><b>製作者のエピソード</b><span>このガイドを作った人と野球</span></a></div>`;
+  if(D.articles.maker) h += `<p class="section-title">おまけ</p><div class="guides"><a class="guide wide" href="#/q/maker"><b>製作者のエピソード</b><span>このガイドを作った人と野球</span></a>${D.articles.words?`<a class="guide wide" href="#/q/words"><b>これも野球用語？</b><span>ふだんの言葉になった野球用語</span></a>`:''}</div>`;
   $('#app').innerHTML = h; bindBoard();
 }
 function guide(key){
