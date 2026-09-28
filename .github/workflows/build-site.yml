@@ -3,28 +3,43 @@ name: サイトを組み立てる
 on:
   push:
     branches: [main]
-    paths: ["content/**", "data/**", "docs/question-tree.md", "scripts/**"]
+    paths: ["content/**", "data/**", "docs/question-tree.md", "docs/content-template.md", "scripts/**"]
   workflow_dispatch:
 
 permissions:
   contents: write
+
+# PR を続けてマージしても、組み立てが1つずつ順番に走るようにする
+concurrency:
+  group: build-site
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: python3 scripts/build_site.py
-      - name: site/index.html をコミット
+      # 最新の main から、サイトと「まだ書かれていない記事だけ」のプロンプト集を作り直してコミットする。
+      # 別のマージと push がぶつかったら、最新の main で作り直して再挑戦する
+      - name: 組み立ててコミット
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898699+github-actions[bot]@users.noreply.github.com"
-          git add site/index.html
-          git diff --cached --quiet || git commit -m "サイトを再生成"
-          git push
+          for i in 1 2 3 4 5; do
+            git fetch origin main && git reset --hard origin/main
+            python3 scripts/build_site.py && python3 scripts/build_prompts.py
+            git add site/index.html docs/gpt-prompts.html
+            git diff --cached --quiet && exit 0
+            git commit -m "サイトとプロンプト集を再生成"
+            git push origin HEAD:main && exit 0
+            sleep 10
+          done
+          exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: guide-site
