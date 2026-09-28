@@ -2,9 +2,6 @@
 id: maker
 title: 製作者のエピソード
 needs_check: false
-styled: true
-episode: v2
-images: v2
 related: [1-14, 1-02-c, 5-03, 5-03-c, 5-03-d, 5-06-a, 7-04, 7-01-b, 2-07-d, 2-11]
 sources:
   - https://news.yahoo.co.jp/expert/articles/6ac92ea9ebcca06ebee8795275f72efd1cffa52a

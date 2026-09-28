@@ -251,12 +251,10 @@ textarea{width:100%;height:220px;margin-top:6px;font:12px/1.5 ui-monospace,monos
 
 <h2>全体の流れ</h2>
 <ol>
-<li><strong>記事を書く</strong>（ChatGPT）… 「1. 記事のプロンプト」。いま STATUS</li>
-<li><strong>書き済みの記事を見やすくする</strong>（ChatGPT）… 「1b. 記事の装飾と画像」。黄色いマーカー・太字・画像を足す。いま DECOSTATUS</li>
-<li><strong>選手カードを詳しくする</strong>（ChatGPT）… 「1c. 選手カード」。穴埋め式で7項目を全部書く。いま PLAYERSTATUS</li>
-<li><strong>疑問を増やす</strong>（ChatGPT）… 「3. 疑問を増やす」</li>
-<li><strong>サイトに反映する</strong> … 下の「反映のしかた」</li>
-<li><strong>ファクトチェック・推敲</strong>（Claude）… 「4〜5. Claude に頼む」。推敲（hq-chat）は記事がそろってから</li>
+<li><strong>上から順に、印の付いたカードをコピーして送る</strong>だけです。「次はこれ」が付いたカードが、次に送るものです</li>
+<li>0. 途中で止まった作業 → 1. 記事 → 2. エピソード → 3. 装飾 → 4. 写真 → 5. 選手カード → 6. 製作者ページ の順。2 と 3・4 は同じ記事を書き換えるので、2 をマージしてから 3・4 を回す</li>
+<li>いまの残り：記事 STATUS／エピソード EPISTATUS／装飾 DECOSTATUS／写真 IMGSTATUS／選手 PLAYERSTATUS</li>
+<li>GPT の作業が終わったら「7. PR をまとめてマージ」を送る。マージされると1〜2分でこのページが作り直され、終わったカードが消える</li>
 </ol>
 
 <div class="card"><h3>反映のしかた（どの作業のあとも同じ）</h3>
@@ -275,48 +273,48 @@ textarea{width:100%;height:220px;margin-top:6px;font:12px/1.5 ui-monospace,monos
 <li>急ぐときは、送るときに「ブランチは作らず main に直接コミットしてください。PR も不要です」と一言添えると、書いたそばから反映されます（レビューなし）</li>
 </ul>
 
-<h2>0. 途中で止まった作業の続き</h2>
+<h2>0. 途中で止まった作業の続き（あれば最優先）</h2>
 <p class="small">GPT が途中で止まり、PR になっていないブランチです。新しいプロンプトより先に、これを1チャットずつ送ってください。同じブランチで続きを書き、PR まで作ります。</p>
 RESUMECARDS
 
-<h2>1. 記事のプロンプト（優先順）</h2>
+<h2>1. 記事を書く</h2>
 CARDS
 
-<h2>1b. 記事の装飾と画像（ChatGPT）</h2>
-<p class="small">書き済みの記事に、黄色いマーカー・太字・Wikimedia Commons の画像を足します。1本15記事前後。</p>
-DECOCARDS
-
-<h2>1d. おもしろエピソードを「話」に書き直す（ChatGPT）</h2>
+<h2>2. おもしろエピソードを書き直す（ChatGPT）</h2>
 <p class="small">数字の紹介やしくみの言い換えになっているエピソードを、人に話したくなる逸話に書き直します。上から順に、1チャットに1つずつ送ってください。EPISTATUS</p>
 EPICARDS
 
-<h2>1c. 選手カードを詳しくする（ChatGPT）</h2>
-<p class="small">1本5人。7項目を見出しにした穴埋めの型で、Wikipedia・ニュース・高校野球や大学野球の記録まで調べて書きます。書いたカードはサイトの選手カードに自動で差し替わります。</p>
-PLAYERCARDS
+<h2>3. 記事の装飾（マーカー・太字・画像）（ChatGPT）</h2>
+<p class="small">書き済みの記事に、黄色いマーカー・太字・Wikimedia Commons の画像を足します。1本15記事前後。</p>
+DECOCARDS
 
-<h2>2. PR をまとめてマージ（ChatGPT）</h2>
-TOOL_MERGE
-
-<h2>3. 疑問を増やす（ChatGPT）</h2>
-<p class="small">疑問ツリー（docs/question-tree.md）に新しい疑問を足す PR を作ります。1チャットで1回。マージすると、上の「記事のプロンプト」に新しい疑問の分が出ます。</p>
-TOOL_MORE
-
-<h2>1f. 製作者のエピソードを仕上げる（ChatGPT）</h2>
-TOOL_MAKER
-
-<h2>1e. 写真の選び直し（ChatGPT）</h2>
+<h2>4. 写真の選び直し（ChatGPT）</h2>
 <p class="small">本文と合わない写真を、本文どおりの写真に選び直します（見つからなければ消す）。IMGSTATUS</p>
 IMGCARDS
 
-<h2>3b. エピソードを探す（ChatGPT・テーマ1つ）</h2>
+<h2>5. 選手カードを詳しくする（ChatGPT）</h2>
+<p class="small">1本5人。7項目を見出しにした穴埋めの型で、Wikipedia・ニュース・高校野球や大学野球の記録まで調べて書きます。書いたカードはサイトの選手カードに自動で差し替わります。</p>
+PLAYERCARDS
+
+<h2>6. 製作者のエピソードを仕上げる（ChatGPT）</h2>
+TOOL_MAKER
+
+<h2>7. PR をまとめてマージ（作業のあと毎回）（ChatGPT）</h2>
+TOOL_MERGE
+
+<h2>8. 疑問を増やす（任意）（ChatGPT）</h2>
+<p class="small">疑問ツリー（docs/question-tree.md）に新しい疑問を足す PR を作ります。1チャットで1回。マージすると、上の「記事のプロンプト」に新しい疑問の分が出ます。</p>
+TOOL_MORE
+
+<h2>9. エピソードを探す（任意・テーマ1つ）（ChatGPT）</h2>
 <p class="small">「この話、もっと面白いのない？」と思ったとき用。書き込みはせず、候補をチャットに返します。</p>
 TOOL_EPISEARCH
 
-<h2>4〜5. Claude に頼む</h2>
+<h2>10. Claude に頼む</h2>
 <p class="small">Claude のプロジェクト（ロッテ対日本ハム観戦ガイド続行）のチャットにコピーして送ります。</p>
 TOOL_CLAUDE
 
-<h2>6. 公開（GitHub Pages）</h2>
+<h2>11. 公開（GitHub Pages）</h2>
 <ol>
 <li>Settings → General → いちばん下の Danger Zone →「Change repository visibility」→「Make public」（無料プランでは Pages に必要。リポジトリの中身は誰でも見られるようになる）</li>
 <li>Settings → Pages →「Source」を「Deploy from a branch」、Branch を「main」「/ (root)」にして Save</li>
@@ -324,7 +322,7 @@ TOOL_CLAUDE
 </ol>
 <p class="small">スマホで GitHub の Settings が見当たらないときは、ブラウザのメニューで「デスクトップ用サイト」に切り替えます。</p>
 
-<h2>7. 球場で使う</h2>
+<h2>12. 球場で使う</h2>
 <ul>
 <li><strong>トップ</strong>：速報ボード（スコア・B/S/O・塁）とスタメン。ランプと塁はタップで変えられます</li>
 <li><strong>写真で更新</strong>：速報ボードの「写真からスコアとスタメンを更新」→ プロンプトをコピー → ChatGPT に<strong>写真と一緒に</strong>送る → 返ってきたコードブロックの中身を貼って「反映」。この更新はその端末のブラウザの中だけに保存されます</li>
@@ -489,6 +487,7 @@ MAKER_PROMPT = f"""あなたは、野球観戦ガイドの編集者です。リ�
 - **渡辺俊介のノーヒットノーラン未遂**：千葉マリンで、何回まで無安打だったか（製作者の記憶では6回くらいまで）、何年の何月何日・相手はどこか、誰に打たれたか。「サブマリン」と呼ばれた投げ方の説明も添える
 - **場内アナウンスの呼び方**：マリンでの選手の独特の呼び方（製作者の記憶では「ペニー」など）が何か。誰をどう呼んでいたのか
 - `<!-- TODO: 確認 -->` がある箇所はすべて、調べて書き直すかコメントを消す
+- 仕上げたら、添付「記事テンプレート」の「見やすくするための装飾」どおりに太字・==マーカー==を付け（画像は本文どおりのものが見つかったときだけ）、front matter に `styled: true` を足す
 
 # 守ること
 - 製作者の体験・気持ち（巨人好き、神宮、号泣した話など）は変えない
@@ -500,7 +499,10 @@ MAKER_PROMPT = f"""あなたは、野球観戦ガイドの編集者です。リ�
 1. main から新しいブランチ `content/maker-fix` を作る（あれば続けて使う）
 2. `content/extra/maker.md` を直してコミットする
 3. `content/maker-fix` から main へのプルリクエストを作る。本文に、調べて書き足したことの一覧と出典 URL
-4. チャットには、その一覧と PR の URL だけを返す"""
+4. チャットには、その一覧と PR の URL だけを返す
+
+# 添付資料
+{attach("docs/content-template.md")}"""
 
 
 # ---- 画像が本文と合っているかの点検 ----
@@ -790,7 +792,7 @@ def resume_cards(stalled, arts_by_id, players):
             body = body.replace(f"content/episode-{take[0]}", b["branch"])
         cards.append(("エピソードの続き", b, take, resume_header(b, take, str) + body))
     # 装飾
-    deco_todo = [i for i in sorted(arts_by_id, key=order_key) if arts_by_id[i]["meta"].get("styled") is not True]
+    deco_todo = [i for i in sorted(arts_by_id, key=order_key) if arts_by_id[i]["meta"].get("styled") is not True and re.match(r"^\d-", i)]
     rs, deco_rest = resume_split("deco", deco_todo, DECO_PER_CHAT, stalled)
     for b, take in rs:
         body = deco_prompt(take, arts_by_id).replace(f"content/deco-{take[0]}", b["branch"]) if take else "（書くものはありません）"
