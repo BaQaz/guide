@@ -116,6 +116,14 @@ def load_players():
             m = re.match(r"^\|\s*(\d|投)\s*\|\s*(.+?)\s*\|\s*(.*?)\s*\|\s*(.+?)\s*\|\s*(.*?)\s*\|$", line)
             if m:
                 lineup.append(list(m.groups()))
+    # 背番号（見出しの「#86」）と、Wikipedia の選手ページの写真（data/players/photos.json）
+    photos = json.loads((base / "photos.json").read_text(encoding="utf-8")) if (base / "photos.json").exists() else {}
+    for g in groups:
+        m = re.search(r"#(\d+)", g["title"])
+        g["number"] = m.group(1) if m else ""
+        ph = photos.get(g["name"]) or photos.get(re.sub(r"[（(].*$", "", g["name"]).strip())
+        if ph:
+            g["photo"] = ph
     return groups, lineup
 
 

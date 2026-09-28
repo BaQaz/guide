@@ -113,6 +113,11 @@ textarea{width:100%;min-height:140px;font:13px/1.5 ui-monospace,monospace;backgr
 .btn.sub{background:var(--surface);color:var(--ink)}
 @media (max-width:380px){.lineup{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.pl-head{display:flex;gap:14px;align-items:flex-end;margin:4px 0 12px}
+.pl-photo{margin:0;flex:0 0 auto;width:150px}.pl-photo img{width:150px;height:190px;object-fit:cover;object-position:top;border-radius:12px;display:block;background:var(--line)}
+.pl-photo figcaption{font-size:.7rem;margin-top:4px}.pl-photo figcaption a{color:var(--sub)}
+.pl-num{font-size:3rem;font-weight:800;line-height:1}.pl-num small{display:block;font-size:.75rem;font-weight:600;opacity:.6}
+.num{display:inline-block;min-width:1.9em;font-size:.72em;font-weight:700;text-align:center;border:1px solid currentColor;border-radius:6px;padding:0 3px;margin-right:6px;opacity:.75}
 </style>
 </head>
 <body>
@@ -192,7 +197,8 @@ const norm = x => String(x).replace(/[（(].*$/,'').replace(/\s/g,'').replace(/�
 function findP(cell){ const name = norm(cell); if(!name) return -1;
   return D.players.findIndex(p=>{ const n=norm(p.name); return n===name || n.endsWith(name) || (name.length>=2 && name.startsWith(n)) }) }
 function pLink(cell, team){ const i = findP(cell);
-  return i<0 ? esc(norm(cell))+(team?' '+gptBtn(newPlayer(norm(cell),team),'カード'):'') : `<a href="#/p/${i}">${esc(norm(cell))}</a>` }
+  const n = i>=0 && D.players[i].number ? `<span class="num">${esc(D.players[i].number)}</span>` : '';
+  return i<0 ? esc(norm(cell))+(team?' '+gptBtn(newPlayer(norm(cell),team),'カード'):'') : `<a href="#/p/${i}">${n}${esc(norm(cell))}</a>` }
 const POS = {'左翼':'左','中堅':'中','右翼':'右','一塁':'一','二塁':'二','三塁':'三','遊撃':'遊','捕手':'捕','指名':'指','投手':'投'};
 const posOf = cell => { const m=String(cell).match(/[（(]([^・）)]+)/); return m ? (POS[m[1]]||m[1]) : '' };
 
@@ -292,7 +298,9 @@ function lineup(){
 }
 function player(i){
   const p = D.players[i]; if(!p) return lineup();
-  let h = `<a class="back" href="#/lineup">← スタメンと選手カード</a><p class="eyebrow">${esc(p.team)}｜${esc(p.section)}</p><h1>${esc(p.title)}</h1><p>${gptBtn(deepPlayer(p),'この選手をGPTで深掘り')}</p><div class="article">`;
+  let h = `<a class="back" href="#/lineup">← スタメンと選手カード</a><p class="eyebrow">${esc(p.team)}｜${esc(p.section)}</p><h1>${esc(p.title)}</h1>
+    <div class="pl-head">${p.photo?`<figure class="pl-photo"><img src="${esc(p.photo.thumb||p.photo.url)}" alt="${esc(p.name)}" loading="lazy"><figcaption><a href="${esc(p.photo.file)}" target="_blank" rel="noopener">写真：Wikimedia Commons</a></figcaption></figure>`:''}${p.number?`<div class="pl-num"><small>背番号</small>${esc(p.number)}</div>`:''}</div>
+    <p>${gptBtn(deepPlayer(p),'この選手をGPTで深掘り')}</p><div class="article">`;
   p.body.split(/^(?=### )/m).forEach(sec=>{ const m=sec.match(/^### (.+)\n?([\s\S]*)$/);
     h += m ? `<div class="sec-head"><h2>${inline(m[1])}</h2>${gptBtn(deepPlayerSec(p, m[1], m[2]),'ここを詳しく聞く')}</div>${md(m[2])}` : md(sec) });
   $('#app').innerHTML = h + '</div>';

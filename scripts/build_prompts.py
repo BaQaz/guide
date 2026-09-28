@@ -301,8 +301,11 @@ TOOL_MERGE
 <p class="small">疑問ツリー（docs/question-tree.md）に新しい疑問を足す PR を作ります。1チャットで1回。マージすると、上の「記事のプロンプト」に新しい疑問の分が出ます。</p>
 TOOL_MORE
 
-<h2>1e. 画像が本文と合っているかの点検（ChatGPT）</h2>
-<p class="small">本文と違うものが写った画像を、差し替えるか消します。IMGSTATUS</p>
+<h2>1f. 製作者のエピソードを仕上げる（ChatGPT）</h2>
+TOOL_MAKER
+
+<h2>1e. 写真の選び直し（ChatGPT）</h2>
+<p class="small">本文と合わない写真を、本文どおりの写真に選び直します（見つからなければ消す）。IMGSTATUS</p>
 IMGCARDS
 
 <h2>3b. エピソードを探す（ChatGPT・テーマ1つ）</h2>
@@ -477,6 +480,29 @@ EPISEARCH_PROMPT = """あなたは、野球をまったく知らない人向け�
 テーマ：＿＿＿＿（例：三振、ホームラン、審判、ZOZOマリンの風）"""
 
 
+MAKER_PROMPT = f"""あなたは、野球観戦ガイドの編集者です。リポジトリ BaQaz/guide の `content/extra/maker.md`（製作者のエピソード）を仕上げてください。あなたはこのリポジトリに書き込めます。
+
+# 直すこと
+今の文章には、事実を確かめきれずに**ぼかして書いた**ところがあります。ウェブで調べて、具体的に書き直してください。ぼかしたまま残さない。
+- **新庄剛志のオールスターでの衣装**：ピカピカのベルトなど、オールスターで何を身につけて出てきたか（何年・どの試合か）。今はふつうの試合の被り物（スパイダーマン・ゴレンジャー）しか書いていない。オールスターの具体的な衣装を足す
+- **新庄の引退**：2006年の引退宣言の日付と言葉、日本シリーズ最後の打席で何が起きたか
+- **渡辺俊介のノーヒットノーラン未遂**：千葉マリンで、何回まで無安打だったか（製作者の記憶では6回くらいまで）、何年の何月何日・相手はどこか、誰に打たれたか。「サブマリン」と呼ばれた投げ方の説明も添える
+- **場内アナウンスの呼び方**：マリンでの選手の独特の呼び方（製作者の記憶では「ペニー」など）が何か。誰をどう呼んでいたのか
+- `<!-- TODO: 確認 -->` がある箇所はすべて、調べて書き直すかコメントを消す
+
+# 守ること
+- 製作者の体験・気持ち（巨人好き、神宮、号泣した話など）は変えない
+- 事実はウェブで確認できたものだけ。確認した URL を front matter の sources に足す
+- 登場する人・チーム・用語には一言の説明を付ける（初心者が読む）。下品な言葉・ダジャレの締めは使わない
+- 口調は今の文章に合わせる
+
+# やること
+1. main から新しいブランチ `content/maker-fix` を作る（あれば続けて使う）
+2. `content/extra/maker.md` を直してコミットする
+3. `content/maker-fix` から main へのプルリクエストを作る。本文に、調べて書き足したことの一覧と出典 URL
+4. チャットには、その一覧と PR の URL だけを返す"""
+
+
 # ---- 画像が本文と合っているかの点検 ----
 IMG_PER_CHAT = 15
 
@@ -489,7 +515,7 @@ def img_jobs(arts):
 
 def img_prompt(ids):
     branch = f"content/images-{ids[0]}"
-    return f"""あなたは、野球をまったく知らない初心者向けの観戦ガイドの編集者です。記事に入れた画像の中に、本文と合っていないものがある、という指摘を受けました（例：本文は「1〜9回の得点が並ぶ表」を説明しているのに、写真はボール・ストライク・アウトだけの小さなボードだった）。画像を1枚ずつ点検してください。
+    return f"""あなたは、野球をまったく知らない初心者向けの観戦ガイドの編集者です。記事の写真の選び方がおかしい、全体的に見直してほしい、という指摘を受けました（例：本文は「1〜9回の得点が並ぶ表」を説明しているのに、写真はボール・ストライク・アウトだけの小さなボードだった）。画像を1枚ずつ点検してください。
 
 # 今回点検する記事（{len(ids)} 本）
 {chr(10).join("- " + i for i in ids)}
@@ -497,7 +523,8 @@ def img_prompt(ids):
 # 点検の基準（1枚ずつ）
 - 画像のすぐ上・すぐ下の本文を読み、**本文が説明しているものが、そのまま写っているか**を確かめる。画像のページ（Wikimedia Commons）を開いて、何が写っているかの説明も読む
 - 合っている → そのまま
-- 合っていない（別の種類のもの・別の球場・別の選手・本文と数字や表示が違う）→ Wikimedia Commons で本文どおりのものが写った画像を探して差し替える。見つからなければ画像の行を消す
+- 合っていない（別の種類のもの・別の球場・別の選手・同じ名字の別人・本文と数字や表示が違う・どの記事にも使える汎用写真の使い回し）→ **まず** Wikimedia Commons で本文どおりのものが写った画像を探して差し替える（例：「ロッテの応援」ならマリーンズの応援席、「ジャクソンの10勝目」ならロッテのアンドレ・ジャクソン本人）。見つからなければ画像の行を消す
+- 画像がない見出しでも、本文どおりのものが写った画像が見つかれば足してよい
 - 表で見せられるもの（スコアボードなど）は、画像の代わりに Markdown の表で例を作ってもよい（見本：main の content/4/4-01.md）
 - 差し替える画像のルールは、添付「記事テンプレート」の「画像」の項目どおり（upload.wikimedia.org の画像だけ、キャプションと出典・作者・ライセンスを書く）
 - 迷ったら消す。読む人が「本文と写真のどちらが正しいの？」と迷う画像は、ないほうがよい
@@ -802,7 +829,7 @@ def main():
     dj = [(ids, arts_all) for ids in chunk(deco_rest, DECO_PER_CHAT)]
     pj = chunk(pl_rest, PLAYERS_PER_CHAT)
     ij = img_jobs(arts_all)
-    imgs = [tool(500 + k, f"画像の点検 {k + 1}：{ids[0]}〜{ids[-1]}（{len(ids)}本）", img_prompt(ids)) for k, ids in enumerate(ij)]
+    imgs = [tool(500 + k, f"写真の選び直し {k + 1}：{ids[0]}〜{ids[-1]}（{len(ids)}本）", img_prompt(ids)) for k, ids in enumerate(ij)]
     resume = [tool(400 + k, f"{t}：{b['branch']}（済み {len(b['done'])}・残り {len(take)}）", pr) for k, (t, b, take, pr) in enumerate(rcards)]
     epi = [tool(300 + k, f"エピソード {k + 1}：{ids[0]}〜{ids[-1]}（{len(ids)}本）", epi_prompt(ids)) for k, ids in enumerate(ej)]
     deco = [tool(100 + k, f"装飾と画像 {k + 1}：{ids[0]}〜{ids[-1]}（{len(ids)}本）", deco_prompt(ids, arts)) for k, (ids, arts) in enumerate(dj)]
@@ -823,6 +850,7 @@ def main():
            .replace("PLAYERCARDS", "\n".join(pcards) or '<p class="small">いまは対象の選手がいません。</p>')
            .replace("CARDS", "\n".join(cards) or '<p class="small">いまは書く記事がありません。3. で疑問を増やせます。</p>')
            .replace("TOOL_MERGE", tool(0, "PR をまとめてマージ", MERGE_PROMPT, "ChatGPT に送ると、記事の PR を確認してマージします。記事を書き終えるたびに何度送ってもかまいません"))
+           .replace("TOOL_MAKER", tool(150, "製作者のエピソードを仕上げる", MAKER_PROMPT) if "TODO: 確認" in read("content/extra/maker.md") else '<p class="small">仕上げ済みです。</p>')
            .replace("TOOL_EPISEARCH", tool(3, "エピソードを探す", EPISEARCH_PROMPT, "最後の行の「テーマ：」を書き換えてから送ってください"))
            .replace("TOOL_MORE", tool(1, "疑問を増やす", MORE_PROMPT()))
            .replace("TOOL_CLAUDE", tool(2, "Claude に頼む（必要な段落だけ送る）", CLAUDE_TEXT)))
