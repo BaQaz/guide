@@ -29,13 +29,34 @@ def attach(rel, body=None):
     return f"<<<ファイル {rel}>>>\n{body if body is not None else read(rel)}\n<<<ここまで>>>"
 
 
-ARTICLE_RULES = """# 出力のしかた（厳守）
-- 書いた記事を全部、1つのコードブロック（```markdown）にまとめて出してください
-- 記事と記事の間は、次の区切り行を1行だけ入れてください（パスは記事ごとに変える）
-  === FILE: content/<カテゴリ番号>/<ID>.md ===
-- 区切り行の次の行から、テンプレートどおりの front matter（--- で囲む）と本文を書いてください
-- 長くて1回で出し切れないときは、キリのいい記事で止めて「続きは『続き』と送ってください」と書いてください。続きも同じ形式の新しいコードブロックで出してください
-- 最後に、コードブロックの外に次の3つを箇条書きで書いてください：書いたIDの一覧／needs_check: true にしたIDと理由／使った出典URLの一覧"""
+BRANCH_NAMES = {2: "basics", 3: "play", 4: "numbers", 5: "today", 6: "cheer", 7: "mind", 8: "rest", 9: "fighters", 10: "stadium"}
+
+
+def write_rules(issue, what):
+    """GPT がリポジトリに直接書き込むための手順。長い出力がチャットで圧縮されないよう、1件ごとにコミットさせる。"""
+    branch = f"content/{issue}-{BRANCH_NAMES[issue]}"
+    return f"""# 書き込みのしかた（厳守）
+あなたは GitHub のリポジトリ BaQaz/guide に書き込めます。チャットに本文を出すのではなく、リポジトリに直接コミットしてください。
+1. main から新しいブランチ `{branch}` を作る（すでにあれば、そのブランチに続けて書く）
+2. {what}
+3. 全部書き終えたら、`{branch}` から main へのプルリクエストを作る。タイトルは Issue #{issue} と同じ、本文の1行目に `Closes #{issue}`、続けて：書いたもの（記事IDまたは選手名）の一覧／needs_check: true にしたIDと理由／使った出典URLの一覧
+4. チャットには、コミットしたファイルの一覧とPRのURLだけを短く返す（本文をチャットに貼らない）
+- 途中で止まったときは「どこまでコミットしたか」を書いて止まり、「続き」と送られたら次のファイルから再開する。同じファイルを二重に作らない
+- 書き込めなかったときは、エラーの内容をそのまま伝えて止まる（チャットに全文を貼る方式に切り替えない）"""
+
+
+def article_write_rules(issue):
+    return write_rules(issue, """記事は1つ書くごとに、1記事＝1ファイルで、すぐにコミットする（まとめて書いてから一度にコミットしない）
+   - パス：`content/<カテゴリ番号>/<ID>.md`（例：`content/1/1-07.md`、`content/1/1-07-a.md`）
+   - 中身：テンプレートどおりの front matter（--- で囲む）と本文だけ。コードブロックや `=== FILE: … ===` の区切りは入れない
+   - コミットメッセージ：`<ID> <疑問の文> (#Issue番号)`""")
+
+
+def players_write_rules():
+    return write_rules(9, """data/players/fighters.md を直接編集してコミットする。選手を1人（またはセクション1つ）書き足すごとにコミットする（全部書いてから一度にコミットしない）
+   - 毎回、ブランチ上の最新の fighters.md を読んでから追記する。既存の先発・スタメン部分は消さない
+   - コミットメッセージ：`日本ハム <選手名またはセクション名> を追加 (#9)`""")
+
 
 COMMON_RULES = """# 守ること
 - 添付の「記事テンプレート」の型・字数・書き方ルールに必ず従う。読み手は野球をほぼ知らない大人で、球場の待ち時間にスマホで1〜2分で読む
@@ -92,7 +113,7 @@ def article_prompt(j):
 
 {COMMON_RULES}
 
-{ARTICLE_RULES}
+{article_write_rules(j['issue'])}
 
 # 添付資料
 """ + "\n\n".join(files)
@@ -114,10 +135,7 @@ def players_prompt():
 - 2026年の出来事はあなたの学習データより新しい場合がある。数字・出来事はウェブ検索で NPB・球団公式・主要紙から確認できたものだけ
 - 確認できない記述は書かず、<!-- TODO: 確認 --> を残す
 
-# 出力のしかた（厳守）
-- 完成した data/players/fighters.md の全文を、1つのコードブロック（```markdown）で出してください（既存の先発・スタメン部分もそのまま含める）
-- 長くて1回で出し切れないときは、キリのいい選手で止めて「続きは『続き』と送ってください」と書いてください
-- 最後に、コードブロックの外に：追加した選手の一覧／残した TODO／使った出典URL の一覧
+{players_write_rules()}
 
 # 添付資料
 {attach("data/players/README.md")}
@@ -151,21 +169,19 @@ textarea{width:100%;height:220px;margin-top:6px;font:12px/1.5 ui-monospace,monos
 
 <h2>1. ChatGPT に送る</h2>
 <ol>
-<li>ChatGPT で<strong>新しいチャット</strong>を開く（1 Issue につき 1チャット）。モデルは考える系（Thinking）を選び、<strong>ウェブ検索をオン</strong>にする</li>
+<li>ChatGPT で<strong>新しいチャット</strong>を開く（1 Issue につき 1チャット）。モデルは考える系（Thinking）を選び、<strong>ウェブ検索</strong>と <strong>GitHub への書き込み</strong>（BaQaz/guide）を使える状態にする</li>
 <li>下の「コピー」を押して、そのまま貼って送る</li>
-<li>途中で止まったら「続き」と送る。全部出たら、コードブロック右上の「コピー」で中身をコピーする（続きがある場合は全部つなげて1つにする）</li>
+<li>ChatGPT が Issue ごとのブランチ（例：<code>content/2-basics</code>）を作り、<strong>記事を1つ書くたびにコミット</strong>します。1件ずつ書き込むので、長い出力がチャットで省略・圧縮される心配がありません。本文をコピーして貼る作業はいりません</li>
+<li>途中で止まったら「続き」と送る（コミット済みの次から再開します）。書き込みの確認を求められたら許可する</li>
 </ol>
 
-<h2>2. GitHub に入れる（スマホのブラウザでも可）</h2>
-<p><strong>記事（#2〜#8, #10）の場合</strong></p>
+<h2>2. PR を確認してマージする（スマホのブラウザでも可）</h2>
 <ol>
-<li><a href="REPO/new/main">GitHub の「Add file → Create new file」</a>を開く</li>
-<li>ファイル名に <code>content/gpt/issue-番号.md</code>（例：<code>content/gpt/issue-2.md</code>）と入力し、本文にコピーした内容を貼る。<code>=== FILE: … ===</code> の区切りはそのままで大丈夫です（サイトを組み立てるスクリプトが自動で1記事ずつに分けます）</li>
-<li>右上の「Commit changes…」→「<strong>Create a new branch</strong>」を選び、メッセージに <code>Closes #番号</code> と書いて「Propose changes」→「Create pull request」</li>
-<li>PR の中身をざっと見て（出典URLがあるか、needs_check の箇所）、「Merge pull request」</li>
+<li>書き終わると ChatGPT が PR を作り、URL を返します（<a href="REPO/pulls">PR の一覧</a>からも開けます）</li>
+<li>PR の中身をざっと見て（出典URLがあるか、needs_check の箇所）、「Merge pull request」。Claude にファクトチェックを頼む場合は、マージ前に PR の URL を渡す</li>
 </ol>
-<p><strong>選手カード（#9）の場合</strong>：<a href="REPO/edit/main/data/players/fighters.md">data/players/fighters.md の編集画面</a>を開き、全部を選択して ChatGPT の出力で置き換え、同じく新しいブランチ → PR → マージ。</p>
-<p class="small">急ぐときは「Commit directly to the main branch」でもかまいません（レビューなしで反映されます）。</p>
+<p class="small">急ぐときは、プロンプトを送るときに「ブランチは作らず main に直接コミットしてください。PR も不要です」と一言添えれば、書いたそばからサイトに反映されます（レビューなし）。</p>
+<p class="small">ChatGPT が書き込めなかったときだけ、手で入れます：<a href="REPO/new/main">Add file → Create new file</a> で <code>content/gpt/issue-番号.md</code> を作り、出力を貼る（<code>=== FILE: … ===</code> 区切りのまとめ書きも読めます）。</p>
 
 <h2>3. プロンプト（優先順）</h2>
 CARDS

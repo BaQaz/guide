@@ -17,11 +17,11 @@ content/
   1/ … 8/              記事本体（1問＝1ファイル、ID名）
 site/index.html        表示用のサイト（1ファイル。scripts/build_site.py で生成。main への push で自動更新）
 scripts/               サイトとプロンプト集を作るスクリプト
-docs/gpt-prompts.html  ChatGPT に貼るプロンプト集と、GitHub への入れ方・共有のしかた（ブラウザで開く）
+docs/gpt-prompts.html  ChatGPT に貼るプロンプト集と、PR の確認・共有のしかた（ブラウザで開く）
 ```
 
 ## GPT で作業するには
-`docs/gpt-prompts.html` をダウンロードしてブラウザで開き、手順どおりにコピー＆ペーストする。
+`docs/gpt-prompts.html` をダウンロードしてブラウザで開き、プロンプトをコピーして ChatGPT に送る。ChatGPT がリポジトリに1記事ずつ直接コミットして PR を作るので、出力を手で貼る必要はない。
 
 ## 進め方
 1. `docs/question-tree.md` で疑問を確定する（済）
